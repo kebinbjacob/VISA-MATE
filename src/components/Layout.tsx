@@ -137,7 +137,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link to="/dashboard/profile" className="text-gray-400 hover:text-gray-600 transition-colors">
                 <Settings className="w-5 h-5" />
               </Link>
-              <Link to="/dashboard/profile" className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 hover:ring-2 hover:ring-blue-500 transition-all" title={user?.displayName || user?.email || "User"}>
+              <button 
+                onClick={signOut}
+                className="text-gray-400 hover:text-red-600 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+              <Link to="/dashboard/profile" className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 hover:ring-2 hover:ring-blue-500 transition-all ml-2" title={user?.displayName || user?.email || "User"}>
                 <img src={user?.photoURL || `https://api.dicebear.com/7.x/notionists/svg?seed=${user?.uid || 'Felix'}&backgroundColor=ffdfbf`} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </Link>
             </div>

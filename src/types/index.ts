@@ -76,6 +76,7 @@ export interface CVData {
   languages: string[];
   noticePeriod: string;
   linkedin: string;
+  github?: string;
 }
 
 export interface UserProfile {
@@ -90,6 +91,7 @@ export interface UserProfile {
   location?: string;
   nationality?: string;
   visaStatus?: string;
+  github?: string;
   cvData?: CVData;
   subscriptionTier: "free" | "premium";
   createdAt: string;
