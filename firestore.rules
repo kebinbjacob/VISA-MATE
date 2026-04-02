@@ -1,0 +1,210 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Document ID: userId (matches auth.uid)
+    // Fields: name (string), email (string), phone (string, optional), cvUrl (string, optional), cvText (string, optional), headline (string, optional), location (string, optional), nationality (string, optional), visaStatus (string, optional), subscriptionTier (string: 'free'|'premium'), role (string: 'user'|'admin'), createdAt (timestamp), updatedAt (timestamp)
+    //
+    // Collection: visas
+    // Document ID: auto-generated
+    // Fields: userId (string), type (string: 'employment'|'visit'|'freelance'|'golden'), sponsor (string), expiryDate (timestamp), status (string: 'active'|'expired'|'cancelled'), notes (string, optional), createdAt (timestamp), updatedAt (timestamp)
+    //
+    // Collection: jobs
+    // Document ID: auto-generated
+    // Fields: externalId (string), source (string), sourceUrl (string, optional), title (string), company (string), location (string), description (string), salaryMin (number, optional), salaryMax (number, optional), currency (string), jobType (string), experienceLevel (string), skills (list), postedAt (timestamp), expiresAt (timestamp, optional), isVerified (bool), isActive (bool)
+    //
+    // Collection: applications
+    // Document ID: auto-generated
+    // Fields: userId (string), jobId (string), status (string: 'saved'|'applied'|'interview'|'offer'|'rejected'), notes (string, optional), appliedAt (timestamp), updatedAt (timestamp)
+    //
+    // Collection: documents
+    // Document ID: auto-generated
+    // Fields: userId (string), name (string), type (string), size (string), url (string, optional), isFolder (bool), parentId (string, optional), createdAt (timestamp), updatedAt (timestamp)
+    //
+    // Collection: scam_reports
+    // Document ID: auto-generated
+    // Fields: userId (string), content (string), sourceType (string), riskScore (number), verdict (string), aiReasoning (string), communityFlags (number), createdAt (timestamp)
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "kevinparackal10@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return hasRequiredFields(['name', 'email', 'subscriptionTier', 'role', 'createdAt', 'updatedAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.subscriptionTier in ['free', 'premium'] &&
+             data.role in ['user', 'admin'] &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp &&
+             isValidOptionalString('phone', 0, 50) &&
+             isValidOptionalString('photoUrl', 0, 1000) &&
+             isValidOptionalString('cvUrl', 0, 1000) &&
+             isValidOptionalString('cvText', 0, 50000) &&
+             isValidOptionalString('headline', 0, 200) &&
+             isValidOptionalString('location', 0, 200) &&
+             isValidOptionalString('nationality', 0, 100) &&
+             isValidOptionalString('visaStatus', 0, 50) &&
+             !( 'cvData' in data ) || data.cvData is map;
+    }
+
+    function isValidVisa(data) {
+      return hasRequiredFields(['userId', 'type', 'sponsor', 'expiryDate', 'status', 'createdAt', 'updatedAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.type in ['employment', 'visit', 'freelance', 'golden'] &&
+             data.sponsor is string && data.sponsor.size() > 0 && data.sponsor.size() < 200 &&
+             data.expiryDate is string &&
+             data.status in ['active', 'expired', 'cancelled'] &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidJob(data) {
+      return hasRequiredFields(['externalId', 'source', 'title', 'company', 'location', 'description', 'currency', 'jobType', 'experienceLevel', 'postedAt', 'isVerified', 'isActive']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.company is string && data.company.size() > 0 && data.company.size() < 200 &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 50000 &&
+             data.postedAt is timestamp &&
+             data.isVerified is bool &&
+             data.isActive is bool;
+    }
+
+    function isValidApplication(data) {
+      return hasRequiredFields(['userId', 'jobId', 'status', 'appliedAt', 'updatedAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.jobId is string && data.jobId.size() > 0 &&
+             data.status in ['saved', 'applied', 'interview', 'offer', 'rejected'] &&
+             data.appliedAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidScamReport(data) {
+      return hasRequiredFields(['userId', 'content', 'sourceType', 'riskScore', 'verdict', 'aiReasoning', 'communityFlags', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 10000 &&
+             data.riskScore is number && data.riskScore >= 0 && data.riskScore <= 1 &&
+             data.verdict in ['safe', 'suspicious', 'scam'] &&
+             data.communityFlags is number &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidDocument(data) {
+      return hasRequiredFields(['userId', 'name', 'type', 'size', 'isFolder', 'createdAt', 'updatedAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.type is string && data.type.size() > 0 && data.type.size() < 50 &&
+             data.size is string && data.size.size() < 50 &&
+             data.isFolder is bool &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidCVReport(data) {
+      return hasRequiredFields(['userId', 'fileName', 'score', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.fileName is string && data.fileName.size() > 0 && data.fileName.size() < 200 &&
+             data.score is number && data.score >= 0 && data.score <= 100 &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    ((request.resource.data.role == 'user' && request.resource.data.subscriptionTier == 'free') || isAdmin());
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    ((request.resource.data.role == resource.data.role && request.resource.data.subscriptionTier == resource.data.subscriptionTier) || isAdmin());
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /visas/{visaId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && isValidVisa(request.resource.data);
+      allow update: if isDocOwner() && request.resource.data.userId == resource.data.userId && isValidVisa(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidJob(request.resource.data);
+      allow update: if isAdmin() && isValidJob(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /applications/{applicationId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && isValidApplication(request.resource.data);
+      allow update: if isDocOwner() && request.resource.data.userId == resource.data.userId && isValidApplication(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /documents/{documentId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && isValidDocument(request.resource.data);
+      allow update: if isDocOwner() && request.resource.data.userId == resource.data.userId && isValidDocument(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /scam_reports/{reportId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && isValidScamReport(request.resource.data);
+      allow update: if isDocOwner() && request.resource.data.userId == resource.data.userId && isValidScamReport(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /cvReports/{reportId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && isValidCVReport(request.resource.data);
+      allow update: if isDocOwner() && request.resource.data.userId == resource.data.userId && isValidCVReport(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+  }
+}

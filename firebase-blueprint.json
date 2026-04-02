@@ -1,0 +1,157 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A VisaMate user profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "cvUrl": { "type": "string" },
+        "cvText": { "type": "string" },
+        "headline": { "type": "string" },
+        "location": { "type": "string" },
+        "nationality": { "type": "string" },
+        "visaStatus": { "type": "string" },
+        "cvData": {
+          "type": "object",
+          "properties": {
+            "summary": { "type": "string" },
+            "experience": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "company": { "type": "string" },
+                  "position": { "type": "string" },
+                  "location": { "type": "string" },
+                  "startDate": { "type": "string" },
+                  "endDate": { "type": "string" },
+                  "current": { "type": "boolean" },
+                  "description": { "type": "string" }
+                }
+              }
+            },
+            "education": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "institution": { "type": "string" },
+                  "degree": { "type": "string" },
+                  "field": { "type": "string" },
+                  "startDate": { "type": "string" },
+                  "endDate": { "type": "string" }
+                }
+              }
+            },
+            "skills": { "type": "array", "items": { "type": "string" } },
+            "languages": { "type": "array", "items": { "type": "string" } },
+            "noticePeriod": { "type": "string" },
+            "linkedin": { "type": "string" }
+          }
+        },
+        "subscriptionTier": { "type": "string", "enum": ["free", "premium"] },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "subscriptionTier", "role", "createdAt", "updatedAt"]
+    },
+    "Visa": {
+      "title": "Visa",
+      "description": "A user's visa record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["employment", "visit", "freelance", "golden"] },
+        "sponsor": { "type": "string" },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "expired", "cancelled"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "sponsor", "expiryDate", "status", "createdAt", "updatedAt"]
+    },
+    "Job": {
+      "title": "Job",
+      "description": "A job listing",
+      "type": "object",
+      "properties": {
+        "externalId": { "type": "string" },
+        "source": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "company": { "type": "string" },
+        "location": { "type": "string" },
+        "description": { "type": "string" },
+        "salaryMin": { "type": "number" },
+        "salaryMax": { "type": "number" },
+        "currency": { "type": "string" },
+        "jobType": { "type": "string" },
+        "experienceLevel": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "postedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "isVerified": { "type": "boolean" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["externalId", "source", "title", "company", "location", "description", "currency", "jobType", "experienceLevel", "postedAt", "isVerified", "isActive"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "A user's job application",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "status": { "type": "string", "enum": ["saved", "applied", "interview", "offer", "rejected"] },
+        "notes": { "type": "string" },
+        "appliedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "jobId", "status", "appliedAt", "updatedAt"]
+    },
+    "ScamReport": {
+      "title": "ScamReport",
+      "description": "A user's scam report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "sourceType": { "type": "string" },
+        "riskScore": { "type": "number" },
+        "verdict": { "type": "string" },
+        "aiReasoning": { "type": "string" },
+        "communityFlags": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "content", "sourceType", "riskScore", "verdict", "aiReasoning", "communityFlags", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/visas/{visaId}": {
+      "schema": "Visa",
+      "description": "User visas"
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Job listings"
+    },
+    "/applications/{applicationId}": {
+      "schema": "Application",
+      "description": "User job applications"
+    },
+    "/scam_reports/{reportId}": {
+      "schema": "ScamReport",
+      "description": "Scam reports"
+    }
+  }
+}
