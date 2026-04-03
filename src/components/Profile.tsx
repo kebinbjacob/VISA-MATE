@@ -72,7 +72,6 @@ export default function Profile() {
       
       reader.onload = async (event) => {
         const img = new Image();
-        img.src = event.target?.result as string;
         
         img.onload = async () => {
           // Resize image to max 256x256 to keep base64 string small for Firestore
@@ -110,6 +109,13 @@ export default function Profile() {
             setUploading(false);
           }
         };
+
+        img.onerror = (error) => {
+          console.error("Error loading image:", error);
+          setUploading(false);
+        };
+
+        img.src = event.target?.result as string;
       };
       
       reader.onerror = (error) => {

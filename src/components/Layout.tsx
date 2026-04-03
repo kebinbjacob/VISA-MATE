@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./FirebaseProvider";
 import { getOrCreateUserProfile } from "../services/userService";
 import { UserProfile } from "../types";
+import { db } from "../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -38,9 +40,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    if (user) {
-      getOrCreateUserProfile(user).then(setProfile).catch(console.error);
-    }
+    if (!user) return;
+    
+    // First ensure profile exists
+    getOrCreateUserProfile(user).catch(console.error);
+
+    // Then listen for real-time updates
+    const unsubscribe = onSnapshot(doc(db, "users", user.uid), (doc) => {
+      if (doc.exists()) {
+        setProfile({ id: doc.id, ...doc.data() } as UserProfile);
+      }
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   // Get current page title
