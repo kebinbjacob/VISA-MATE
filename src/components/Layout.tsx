@@ -13,7 +13,8 @@ import {
   Settings,
   HelpCircle,
   FolderOpen,
-  Edit3
+  Edit3,
+  ListTodo
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Visa Tracker", icon: FileText, path: "/dashboard/visa" },
   { label: "Job Board", icon: Briefcase, path: "/dashboard/jobs" },
+  { label: "Job Tracker", icon: ListTodo, path: "/dashboard/tracker" },
   { label: "CV Builder", icon: Edit3, path: "/dashboard/cv-builder" },
   { label: "Document Vault", icon: FolderOpen, path: "/dashboard/vault" },
   { label: "Security Center", icon: ShieldCheck, path: "/dashboard/scam" },

@@ -35,7 +35,10 @@ export default function ScamDetector() {
     
     try {
       // @ts-ignore
-      const apiKey = typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : import.meta.env.VITE_GEMINI_API_KEY;
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+      
+      console.log("Scam Detector - API Key loaded:", !!apiKey);
+      
       const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({

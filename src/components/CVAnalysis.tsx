@@ -64,13 +64,23 @@ export default function CVAnalysis() {
     setCurrentReport(null);
     
     try {
-      // Convert file to base64
-      const buffer = await selectedFile.arrayBuffer();
-      const base64 = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+      // Convert file to base64 safely using FileReader
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(selectedFile);
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.onerror = error => reject(error);
+      });
       const mimeType = selectedFile.type || 'application/pdf';
 
       // @ts-ignore
-      const apiKey = typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : import.meta.env.VITE_GEMINI_API_KEY;
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+      
+      console.log("CV Analysis - API Key loaded:", !!apiKey);
+      
       const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({

@@ -3,7 +3,7 @@ import { fetchJobs } from "../services/jobService";
 import { getUserApplications, addApplication, deleteApplication } from "../services/applicationService";
 import { Job, JobType, ExperienceLevel, Application } from "../types";
 import { useAuth } from "./FirebaseProvider";
-import { Search, MapPin, Briefcase, DollarSign, Filter, ExternalLink, CheckCircle2, Bookmark, ChevronLeft, ChevronRight, Globe } from "lucide-react";
+import { Search, MapPin, Briefcase, DollarSign, Filter, ExternalLink, CheckCircle2, Bookmark, ChevronLeft, ChevronRight, Globe, Clock, ShieldCheck, Building2 } from "lucide-react";
 import { formatCurrency, formatDate } from "../lib/utils";
 
 export default function Jobs() {
@@ -62,25 +62,25 @@ export default function Jobs() {
     setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const toggleSave = async (jobId: string) => {
+  const toggleSave = async (job: Job) => {
     if (!user) return;
     
     try {
-      if (savedJobs.has(jobId)) {
+      if (savedJobs.has(job.id)) {
         // Unsave
-        const appId = savedJobs.get(jobId)!;
+        const appId = savedJobs.get(job.id)!;
         await deleteApplication(appId);
         setSavedJobs(prev => {
           const next = new Map(prev);
-          next.delete(jobId);
+          next.delete(job.id);
           return next;
         });
       } else {
         // Save
-        const appId = await addApplication(user.uid, jobId, 'saved');
+        const appId = await addApplication(user.uid, job, 'saved');
         setSavedJobs(prev => {
           const next = new Map(prev);
-          next.set(jobId, appId);
+          next.set(job.id, appId);
           return next;
         });
       }
@@ -292,78 +292,84 @@ export default function Jobs() {
               </div>
             ) : (
               displayedJobs.map(job => (
-                <div key={job.id} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
-                  <div className="flex gap-6">
+                <div key={job.id} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow group flex flex-col gap-4">
+                  <div className="flex items-start gap-4">
                     {/* Logo Placeholder */}
-                    <div className="w-16 h-16 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center shrink-0">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{job.company.substring(0, 2)}</span>
+                    <div className="w-14 h-14 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 flex items-center justify-center shrink-0 text-blue-700">
+                      <Building2 className="w-6 h-6" />
                     </div>
                     
                     <div className="flex-1">
-                      <div className="flex items-start justify-between mb-1">
-                        <div className="flex items-center gap-3">
-                          <h2 className="text-xl font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h2 className="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-1">
                             {job.title}
                           </h2>
-                          {job.isVerified && (
-                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Verified
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <p className="text-sm text-gray-600 mb-4">{job.company} • {job.location}</p>
-                      
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-semibold rounded-lg flex items-center gap-1.5">
-                          <Briefcase className="w-3.5 h-3.5 text-gray-400" /> 
-                          {job.salaryMin ? `${formatCurrency(job.salaryMin)} - ${formatCurrency(job.salaryMax || job.salaryMin)}` : "Salary Negotiable"}
-                        </span>
-                        <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-semibold rounded-lg flex items-center gap-1.5">
-                          <Globe className="w-3.5 h-3.5 text-gray-400" /> 
-                          {job.jobType.replace("_", " ")}
-                        </span>
-                        <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-semibold rounded-lg flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-gray-400" /> 
-                          Visa Sponsored
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                        <div className="flex items-center gap-3">
-                          <div className="flex -space-x-2">
-                            <div className="w-8 h-8 rounded-full border-2 border-white bg-blue-100 flex items-center justify-center overflow-hidden"><img src="https://api.dicebear.com/7.x/notionists/svg?seed=1" alt="avatar" className="w-full h-full" /></div>
-                            <div className="w-8 h-8 rounded-full border-2 border-white bg-emerald-100 flex items-center justify-center overflow-hidden"><img src="https://api.dicebear.com/7.x/notionists/svg?seed=2" alt="avatar" className="w-full h-full" /></div>
-                            <div className="w-8 h-8 rounded-full border-2 border-white bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white">+8</div>
+                          <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
+                            <span className="font-medium text-gray-900">{job.company}</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-gray-400" /> {job.location}</span>
                           </div>
-                          <span className="text-xs text-gray-400 font-medium hidden sm:block">
-                            Found via <span className="text-gray-600 font-bold capitalize">{job.source.replace('_', ' ')}</span>
+                        </div>
+                        {job.isVerified && (
+                          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded-lg flex items-center gap-1 shrink-0">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Verified
                           </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={() => toggleSave(job.id)}
-                            className={`px-4 py-2 border text-sm font-bold rounded-xl transition-colors flex items-center gap-2 ${
-                              savedJobs.has(job.id) 
-                                ? 'bg-blue-50 border-blue-200 text-blue-700' 
-                                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            <Bookmark className={`w-4 h-4 ${savedJobs.has(job.id) ? 'fill-blue-700' : ''}`} />
-                            {savedJobs.has(job.id) ? 'Saved' : 'Save'}
-                          </button>
-                          <a 
-                            href={job.sourceUrl} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="px-6 py-2 bg-blue-700 text-white text-sm font-bold rounded-xl hover:bg-blue-800 transition-colors"
-                          >
-                            Apply Now
-                          </a>
-                        </div>
+                        )}
                       </div>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                    {job.description}
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1.5 bg-green-50 text-green-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 border border-green-100">
+                      <DollarSign className="w-3.5 h-3.5" /> 
+                      {job.salaryMin ? `${formatCurrency(job.salaryMin)} - ${formatCurrency(job.salaryMax || job.salaryMin)}` : "Salary Negotiable"}
+                    </span>
+                    <span className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 border border-blue-100">
+                      <Briefcase className="w-3.5 h-3.5" /> 
+                      <span className="capitalize">{job.jobType.replace("_", " ")}</span>
+                    </span>
+                    <span className="px-3 py-1.5 bg-purple-50 text-purple-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 border border-purple-100">
+                      <ShieldCheck className="w-3.5 h-3.5" /> 
+                      Visa Sponsored
+                    </span>
+                    <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-semibold rounded-lg flex items-center gap-1.5 border border-gray-200">
+                      <Clock className="w-3.5 h-3.5" /> 
+                      {job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1)} Level
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
+                      <span>Source:</span>
+                      <span className="px-2 py-1 bg-gray-100 rounded-md text-gray-700 capitalize">{job.source.replace('_', ' ')}</span>
+                      <span className="hidden sm:inline">• Posted {new Date(job.postedAt).toLocaleDateString()}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => toggleSave(job)}
+                        className={`p-2.5 border rounded-xl transition-colors flex items-center justify-center ${
+                          savedJobs.has(job.id) 
+                            ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                            : 'border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                        title={savedJobs.has(job.id) ? 'Saved' : 'Save Job'}
+                      >
+                        <Bookmark className={`w-5 h-5 ${savedJobs.has(job.id) ? 'fill-blue-700' : ''}`} />
+                      </button>
+                      <a 
+                        href={job.sourceUrl} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="px-6 py-2.5 bg-blue-700 text-white text-sm font-bold rounded-xl hover:bg-blue-800 transition-colors flex items-center gap-2"
+                      >
+                        Apply Now <ExternalLink className="w-4 h-4" />
+                      </a>
                     </div>
                   </div>
                 </div>

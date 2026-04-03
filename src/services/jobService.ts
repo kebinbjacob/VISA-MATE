@@ -14,6 +14,8 @@ export async function fetchJobs(filters?: {
     // @ts-ignore
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
     
+    console.log("Job Service - API Key loaded:", !!apiKey);
+    
     if (!apiKey) {
       console.warn("No Gemini API key found. Falling back to empty jobs array.");
       return [];
@@ -46,6 +48,7 @@ export async function fetchJobs(filters?: {
       contents: searchPrompt,
       config: {
         tools: [{ googleSearch: {} }],
+        toolConfig: { includeServerSideToolInvocations: true },
         temperature: 0.1,
       }
     });

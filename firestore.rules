@@ -110,7 +110,7 @@ service cloud.firestore {
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
              data.company is string && data.company.size() > 0 && data.company.size() < 200 &&
              data.description is string && data.description.size() > 0 && data.description.size() < 50000 &&
-             data.postedAt is timestamp &&
+             (data.postedAt is timestamp || data.postedAt is string) &&
              data.isVerified is bool &&
              data.isActive is bool;
     }
@@ -174,8 +174,8 @@ service cloud.firestore {
 
     match /jobs/{jobId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin() && isValidJob(request.resource.data);
-      allow update: if isAdmin() && isValidJob(request.resource.data);
+      allow create: if isAuthenticated() && isValidJob(request.resource.data);
+      allow update: if isAuthenticated() && isValidJob(request.resource.data);
       allow delete: if isAdmin();
     }
 

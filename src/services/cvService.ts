@@ -43,6 +43,8 @@ export async function enhanceSummary(summary: string, headline: string): Promise
     // @ts-ignore
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
     
+    console.log("CV Service - API Key loaded:", !!apiKey);
+    
     if (!apiKey) {
       console.warn("No Gemini API key found for CV enhancement.");
       return summary;

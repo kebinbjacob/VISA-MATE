@@ -8,6 +8,7 @@ import { FileText, ShieldAlert } from "lucide-react";
 import Dashboard from "./components/Dashboard";
 import VisaDashboard from "./components/VisaDashboard";
 import Jobs from "./components/Jobs";
+import JobTracker from "./components/JobTracker";
 import CVAnalysis from "./components/CVAnalysis";
 import ScamDetector from "./components/ScamDetector";
 import DocumentVault from "./components/DocumentVault";
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
         <Route path="/dashboard/visa" element={<Layout><VisaDashboard /></Layout>} />
         <Route path="/dashboard/jobs" element={<Layout><Jobs /></Layout>} />
+        <Route path="/dashboard/tracker" element={<Layout><JobTracker /></Layout>} />
         <Route path="/dashboard/cv" element={<Layout><CVAnalysis /></Layout>} />
         <Route path="/dashboard/scam" element={<Layout><ScamDetector /></Layout>} />
         <Route path="/dashboard/vault" element={<Layout><DocumentVault /></Layout>} />
