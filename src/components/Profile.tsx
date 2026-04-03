@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './FirebaseProvider';
 import { getOrCreateUserProfile, updateUserProfile } from '../services/userService';
 import { UserProfile } from '../types';
-import { storage } from '../firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
 import { Camera, Save, Loader2, User as UserIcon } from 'lucide-react';
 
@@ -68,16 +66,58 @@ export default function Profile() {
 
     setUploading(true);
     try {
-      const storageRef = ref(storage, `profiles/${user.uid}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      // Create a FileReader to read the image
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
       
-      await updateProfile(user, { photoURL: downloadURL });
-      await updateUserProfile(user.uid, { photoUrl: downloadURL });
-      setProfile(prev => prev ? { ...prev, photoUrl: downloadURL } : null);
+      reader.onload = async (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        
+        img.onload = async () => {
+          // Resize image to max 256x256 to keep base64 string small for Firestore
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 256;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG
+          const base64Url = canvas.toDataURL('image/jpeg', 0.8);
+          
+          try {
+            await updateUserProfile(user.uid, { photoUrl: base64Url });
+            setProfile(prev => prev ? { ...prev, photoUrl: base64Url } : null);
+          } catch (err) {
+            console.error("Error saving profile picture:", err);
+          } finally {
+            setUploading(false);
+          }
+        };
+      };
+      
+      reader.onerror = (error) => {
+        console.error("Error reading file:", error);
+        setUploading(false);
+      };
     } catch (error) {
-      console.error("Error uploading profile picture:", error);
-    } finally {
+      console.error("Error processing profile picture:", error);
       setUploading(false);
     }
   };

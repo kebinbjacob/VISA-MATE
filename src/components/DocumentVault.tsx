@@ -3,6 +3,7 @@ import { FolderOpen, FileText, UploadCloud, MoreVertical, Search, Filter, Shield
 import { useAuth } from "./FirebaseProvider";
 import { getUserDocuments, addDocument, deleteDocument } from "../services/documentService";
 import { Document } from "../types";
+import { formatDate } from "../lib/utils";
 
 type VaultFile = {
   id: string;
@@ -48,7 +49,7 @@ export default function DocumentVault() {
           name: doc.name,
           type: ext,
           size: doc.size,
-          updatedAt: new Date(doc.createdAt).toLocaleDateString(),
+          updatedAt: formatDate(doc.createdAt),
           isFolder: doc.isFolder,
           icon, color, bg
         };

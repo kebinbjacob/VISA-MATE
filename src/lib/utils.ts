@@ -5,12 +5,28 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: Date | string | number) {
+export function formatDate(date: any) {
+  if (!date) return "";
+  
+  let d: Date;
+  
+  // Handle Firestore Timestamp
+  if (typeof date === 'object' && date !== null && 'seconds' in date) {
+    d = new Date(date.seconds * 1000);
+  } else {
+    d = new Date(date);
+  }
+
+  // Check for invalid date
+  if (isNaN(d.getTime())) {
+    return "";
+  }
+
   return new Intl.DateTimeFormat("en-AE", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  }).format(new Date(date));
+  }).format(d);
 }
 
 export function formatCurrency(amount: number) {
