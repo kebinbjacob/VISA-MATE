@@ -1,6 +1,7 @@
 import { db } from "../firebase";
 import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from "firebase/firestore";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
+import { CVData } from "../types";
 
 export interface CVReport {
   id?: string;
@@ -77,5 +78,130 @@ export async function enhanceSummary(summary: string, headline: string): Promise
   } catch (error) {
     console.error("Error enhancing summary via Gemini:", error);
     return summary;
+  }
+}
+
+export async function extractCVData(fileBase64: string, mimeType: string): Promise<Partial<CVData>> {
+  try {
+    // @ts-ignore
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+    
+    if (!apiKey) {
+      throw new Error("No Gemini API key found for CV extraction.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const prompt = `Extract the candidate's CV data from the provided document.
+    Format the output exactly according to the provided JSON schema.
+    Ensure that the summary is professional.
+    For dates, use a consistent format like "MMM YYYY" (e.g., "Jan 2020").
+    If a field is not found, leave it empty or omit it.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          inlineData: {
+            data: fileBase64,
+            mimeType: mimeType
+          }
+        },
+        prompt
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING, description: "Professional summary" },
+            experience: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  company: { type: Type.STRING },
+                  position: { type: Type.STRING },
+                  location: { type: Type.STRING },
+                  startDate: { type: Type.STRING },
+                  endDate: { type: Type.STRING },
+                  current: { type: Type.BOOLEAN },
+                  description: { type: Type.STRING, description: "Bullet points or paragraph of responsibilities" }
+                }
+              }
+            },
+            education: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  institution: { type: Type.STRING },
+                  degree: { type: Type.STRING },
+                  field: { type: Type.STRING },
+                  startDate: { type: Type.STRING },
+                  endDate: { type: Type.STRING }
+                }
+              }
+            },
+            skills: { type: Type.ARRAY, items: { type: Type.STRING } },
+            languages: { type: Type.ARRAY, items: { type: Type.STRING } },
+            noticePeriod: { type: Type.STRING },
+            linkedin: { type: Type.STRING },
+            github: { type: Type.STRING }
+          }
+        }
+      }
+    });
+
+    if (!response.text) {
+      throw new Error("Empty response from AI");
+    }
+
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error extracting CV data via Gemini:", error);
+    throw error;
+  }
+}
+
+export async function enhanceExperienceDescription(description: string, position: string, company: string): Promise<string> {
+  try {
+    // @ts-ignore
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+    
+    if (!apiKey) {
+      console.warn("No Gemini API key found for CV enhancement.");
+      return description;
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const prompt = `You are a professional CV writer specializing in the UAE job market. 
+    Enhance the following work experience description for a candidate who worked as a "${position}" at "${company}".
+    
+    Original Description:
+    "${description}"
+    
+    Requirements:
+    - Professional, action-oriented tone.
+    - Use strong action verbs (e.g., Spearheaded, Orchestrated, Optimized).
+    - Focus on achievements and quantifiable results where possible.
+    - Format as a clean, bulleted list or a cohesive paragraph, whichever fits best.
+    - Tailor it for UAE employers (emphasize leadership, efficiency, and scale).
+    
+    Return ONLY the enhanced description text. No explanations or conversational text.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        temperature: 0.7,
+      }
+    });
+
+    return response.text || description;
+  } catch (error) {
+    console.error("Error enhancing experience description via Gemini:", error);
+    return description;
   }
 }

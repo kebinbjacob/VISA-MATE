@@ -68,7 +68,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       <div className="max-w-md w-full bg-white border border-gray-200 rounded-2xl p-8 shadow-sm space-y-8">
         <div className="text-center space-y-2">
           <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mx-auto border border-blue-100">
@@ -191,6 +191,22 @@ export default function Auth() {
           </p>
         </div>
       </div>
+      
+      {/* Footer */}
+      <footer className="w-full text-center text-sm text-gray-500 mt-8">
+        <p>
+          Designed and Developed by{" "}
+          <a 
+            href="https://www.appmatixsolutions.com/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+          >
+            Appmatix Solutions
+          </a>
+          {" "}and Rights Reserved &copy; {new Date().getFullYear()}
+        </p>
+      </footer>
     </div>
   );
 }

@@ -84,7 +84,7 @@ service cloud.firestore {
              data.createdAt is timestamp &&
              data.updatedAt is timestamp &&
              isValidOptionalString('phone', 0, 50) &&
-             isValidOptionalString('photoUrl', 0, 1000) &&
+             isValidOptionalString('photoUrl', 0, 1048487) &&
              isValidOptionalString('cvUrl', 0, 1000) &&
              isValidOptionalString('cvText', 0, 50000) &&
              isValidOptionalString('headline', 0, 200) &&

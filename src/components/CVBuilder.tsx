@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "./FirebaseProvider";
 import { getOrCreateUserProfile, saveCVData } from "../services/userService";
 import { UserProfile, CVData, WorkExperience, Education } from "../types";
-import { enhanceSummary } from "../services/cvService";
+import { enhanceSummary, extractCVData, enhanceExperienceDescription } from "../services/cvService";
 import CVPreview from "./CVPreview";
 import { 
   Plus, Trash2, Save, Sparkles, Loader2, 
   Briefcase, GraduationCap, User, Wrench, 
   Globe, ChevronRight, ChevronLeft, Layout, 
-  Edit3, Eye, CheckCircle2
+  Edit3, Eye, CheckCircle2, Upload
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -26,9 +26,15 @@ export default function CVBuilder() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [enhancing, setEnhancing] = useState(false);
+  const [enhancingExp, setEnhancingExp] = useState<Record<number, boolean>>({});
+  const [extracting, setExtracting] = useState(false);
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [activeSection, setActiveSection] = useState<number>(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoad = useRef(true);
 
   const sections = [
     { id: "personal", label: "Personal Info", icon: User },
@@ -43,6 +49,36 @@ export default function CVBuilder() {
       loadData();
     }
   }, [user]);
+
+  // Auto-save effect
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      if (!loading) isInitialLoad.current = false;
+      return;
+    }
+    
+    if (!user) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      setSaving(true);
+      try {
+        await saveCVData(user.uid, cvData);
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error("Auto-save failed:", error);
+      } finally {
+        setSaving(false);
+      }
+    }, 1500); // 1.5 second debounce
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [cvData, user, loading]);
 
   const loadData = async () => {
     try {
@@ -70,7 +106,7 @@ export default function CVBuilder() {
     setSaving(true);
     try {
       await saveCVData(user.uid, cvData);
-      // Show success message or toast
+      setLastSaved(new Date());
     } catch (error) {
       console.error("Error saving CV data:", error);
     } finally {
@@ -88,6 +124,68 @@ export default function CVBuilder() {
       console.error("Error enhancing summary:", error);
     } finally {
       setEnhancing(false);
+    }
+  };
+
+  const handleEnhanceExperience = async (index: number) => {
+    const exp = cvData.experience[index];
+    if (!exp.description || !exp.position || !exp.company) {
+      alert("Please fill in Position, Company, and Description before enhancing.");
+      return;
+    }
+    
+    setEnhancingExp(prev => ({ ...prev, [index]: true }));
+    try {
+      const enhanced = await enhanceExperienceDescription(exp.description, exp.position, exp.company);
+      updateExperience(index, "description", enhanced);
+    } catch (error) {
+      console.error("Error enhancing experience:", error);
+    } finally {
+      setEnhancingExp(prev => ({ ...prev, [index]: false }));
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setExtracting(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = (reader.result as string).split(',')[1];
+        const extractedData = await extractCVData(base64String, file.type);
+        
+        setCvData(prev => ({
+          ...prev,
+          summary: extractedData.summary || prev.summary,
+          experience: extractedData.experience || prev.experience,
+          education: extractedData.education || prev.education,
+          skills: extractedData.skills || prev.skills,
+          languages: extractedData.languages || prev.languages,
+          noticePeriod: extractedData.noticePeriod || prev.noticePeriod,
+          linkedin: extractedData.linkedin || prev.linkedin,
+          github: extractedData.github || prev.github
+        }));
+        
+        // Explicitly trigger save after extraction
+        if (user) {
+           await saveCVData(user.uid, {
+             ...cvData,
+             ...extractedData
+           });
+           setLastSaved(new Date());
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error extracting CV data:", error);
+      alert("Failed to extract CV data. Please try again or enter manually.");
+    } finally {
+      setExtracting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -185,27 +283,56 @@ export default function CVBuilder() {
           <p className="text-gray-600">Create a professional, ATS-friendly CV tailored for the UAE market.</p>
         </div>
 
-        <div className="flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm">
-          <button
-            onClick={() => setActiveTab("edit")}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${
-              activeTab === "edit" 
-                ? "bg-blue-600 text-white shadow-md" 
-                : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <Edit3 className="w-4 h-4" /> Edit
-          </button>
-          <button
-            onClick={() => setActiveTab("preview")}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${
-              activeTab === "preview" 
-                ? "bg-blue-600 text-white shadow-md" 
-                : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <Eye className="w-4 h-4" /> Preview
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {lastSaved && (
+            <div className="text-xs text-gray-500 flex items-center gap-1 mr-2">
+              {saving ? (
+                <><Loader2 className="w-3 h-3 animate-spin" /> Saving...</>
+              ) : (
+                <><CheckCircle2 className="w-3 h-3 text-emerald-500" /> Saved {lastSaved.toLocaleTimeString()}</>
+              )}
+            </div>
+          )}
+          <div className="relative">
+            <input 
+              type="file" 
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept=".pdf,.doc,.docx,.txt"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={extracting}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 disabled:opacity-50"
+            >
+              {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {extracting ? "Extracting..." : "Upload Old CV"}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm">
+            <button
+              onClick={() => setActiveTab("edit")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${
+                activeTab === "edit" 
+                  ? "bg-blue-600 text-white shadow-md" 
+                  : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              <Edit3 className="w-4 h-4" /> Edit
+            </button>
+            <button
+              onClick={() => setActiveTab("preview")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${
+                activeTab === "preview" 
+                  ? "bg-blue-600 text-white shadow-md" 
+                  : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              <Eye className="w-4 h-4" /> Preview
+            </button>
+          </div>
         </div>
       </div>
 
@@ -447,7 +574,17 @@ export default function CVBuilder() {
                                 <label htmlFor={`current-${index}`} className="text-sm font-bold text-gray-700">I currently work here</label>
                               </div>
                               <div className="md:col-span-2 space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Achievements & Responsibilities</label>
+                                <div className="flex items-center justify-between">
+                                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Achievements & Responsibilities</label>
+                                  <button
+                                    onClick={() => handleEnhanceExperience(index)}
+                                    disabled={enhancingExp[index] || !exp.description}
+                                    className="flex items-center gap-1.5 text-xs bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-1.5 rounded-lg font-bold hover:shadow-md transition-all disabled:opacity-50"
+                                  >
+                                    {enhancingExp[index] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                    AI Enhance
+                                  </button>
+                                </div>
                                 <textarea
                                   value={exp.description}
                                   onChange={(e) => updateExperience(index, 'description', e.target.value)}

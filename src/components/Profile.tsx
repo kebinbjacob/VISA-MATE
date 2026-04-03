@@ -150,128 +150,152 @@ export default function Profile() {
         </button>
       </div>
 
-      <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-10 items-start">
-          
-          {/* Profile Picture Section */}
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative group">
-              <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-100 border-4 border-white shadow-lg flex items-center justify-center">
-                {profile?.photoUrl ? (
-                  <img src={profile.photoUrl} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <UserIcon className="w-12 h-12 text-gray-400" />
-                )}
-              </div>
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="absolute bottom-0 right-0 bg-blue-600 text-white p-2.5 rounded-full shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-              </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                accept="image/*" 
-                className="hidden" 
-              />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Profile Card */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
+            <div className="bg-blue-600 h-24 relative">
+               <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
+                  <div className="relative group">
+                    <div className="w-24 h-24 rounded-full overflow-hidden bg-white border-4 border-white shadow-xl flex items-center justify-center">
+                      {profile?.photoUrl ? (
+                        <img src={profile.photoUrl} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <div className="w-full h-full bg-blue-50 flex items-center justify-center text-blue-600 text-3xl font-bold">
+                          {profile?.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                      )}
+                    </div>
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 rounded-full transition-opacity flex items-center justify-center disabled:opacity-50"
+                    >
+                      {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange} 
+                      accept="image/png, image/jpeg, image/webp" 
+                      className="hidden" 
+                    />
+                  </div>
+               </div>
             </div>
-            <div className="text-center">
-              <p className="text-sm font-medium text-gray-900">Profile Picture</p>
-              <p className="text-xs text-gray-500 mt-1">JPG, GIF or PNG. Max 2MB.</p>
+            <div className="pt-16 pb-6 px-6 text-center">
+              <h3 className="text-xl font-bold text-gray-900">{profile?.name || 'Anonymous User'}</h3>
+              <p className="text-sm text-gray-500 mb-6">{user?.email}</p>
+              
+              <div className="space-y-4 text-left border-t border-gray-100 pt-6">
+                <div className="flex items-start gap-3">
+                  <UserIcon className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">User ID (System ID)</p>
+                    <p className="text-xs font-mono text-gray-600 break-all">{user?.uid}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <UserIcon className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Login Email</p>
+                    <p className="text-xs text-gray-600">{user?.email}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Form Section */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Full Name</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
-                placeholder="John Doe"
-              />
+        {/* Right Column: Form Section */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <UserIcon className="w-5 h-5 text-blue-600" />
+                Personal Details
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">Update your identity and contact information.</p>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Email Address</label>
-              <input
-                type="email"
-                value={profile?.email || ''}
-                disabled
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 outline-none cursor-not-allowed"
-              />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Full Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
+                  placeholder="John Doe"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Phone Number</label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
-                placeholder="+971 50 123 4567"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Phone Number</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
+                  placeholder="+971 50 123 4567"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Professional Headline</label>
-              <input
-                type="text"
-                name="headline"
-                value={formData.headline}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
-                placeholder="Senior Software Engineer"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Professional Headline</label>
+                <input
+                  type="text"
+                  name="headline"
+                  value={formData.headline}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
+                  placeholder="Senior Software Engineer"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Location</label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
-                placeholder="Dubai, UAE"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Location</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
+                  placeholder="Dubai, UAE"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Nationality</label>
-              <input
-                type="text"
-                name="nationality"
-                value={formData.nationality}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
-                placeholder="e.g. Indian, British"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Nationality</label>
+                <input
+                  type="text"
+                  name="nationality"
+                  value={formData.nationality}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
+                  placeholder="e.g. Indian, British"
+                />
+              </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-semibold text-gray-700">Current Visa Status</label>
-              <select
-                name="visaStatus"
-                value={formData.visaStatus}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all bg-white"
-              >
-                <option value="">Select Visa Status</option>
-                <option value="employment">Employment Visa</option>
-                <option value="visit">Visit Visa</option>
-                <option value="freelance">Freelance Visa</option>
-                <option value="golden">Golden Visa</option>
-                <option value="dependent">Dependent Visa</option>
-                <option value="none">No Visa / Outside UAE</option>
-              </select>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Current Visa Status</label>
+                <select
+                  name="visaStatus"
+                  value={formData.visaStatus}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all bg-white"
+                >
+                  <option value="">Select Visa Status</option>
+                  <option value="employment">Employment Visa</option>
+                  <option value="visit">Visit Visa</option>
+                  <option value="freelance">Freelance Visa</option>
+                  <option value="golden">Golden Visa</option>
+                  <option value="dependent">Dependent Visa</option>
+                  <option value="none">No Visa / Outside UAE</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>

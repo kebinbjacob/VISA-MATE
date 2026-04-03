@@ -175,8 +175,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-6 lg:p-10 bg-[#f8f9fa] lg:bg-transparent">
-          {children}
+        <div className="flex-1 overflow-y-auto p-6 lg:p-10 bg-[#f8f9fa] lg:bg-transparent flex flex-col">
+          <div className="flex-1">
+            {children}
+          </div>
+          
+          {/* Footer */}
+          <footer className="mt-10 pt-6 border-t border-gray-200 text-center text-sm text-gray-500 shrink-0">
+            <p>
+              Designed and Developed by{" "}
+              <a 
+                href="https://www.appmatixsolutions.com/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+              >
+                Appmatix Solutions
+              </a>
+              {" "}and Rights Reserved &copy; {new Date().getFullYear()}
+            </p>
+          </footer>
         </div>
       </main>
     </div>
