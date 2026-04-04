@@ -17,6 +17,10 @@ export default function Jobs() {
     location: "",
     jobType: "" as JobType | "",
     experienceLevel: "" as ExperienceLevel | "",
+    isRemote: false,
+    companyCulture: [] as string[],
+    salaryMin: 0,
+    salaryMax: 100000,
   });
 
   useEffect(() => {
@@ -59,7 +63,27 @@ export default function Jobs() {
   };
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFilters(prev => ({ ...prev, [name]: checked }));
+    } else {
+      setFilters(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const toggleCulture = (culture: string) => {
+    setFilters(prev => ({
+      ...prev,
+      companyCulture: prev.companyCulture.includes(culture)
+        ? prev.companyCulture.filter(c => c !== culture)
+        : [...prev.companyCulture, culture]
+    }));
+  };
+
+  const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: parseInt(value) || 0 }));
   };
 
   const toggleSave = async (job: Job) => {
@@ -167,7 +191,7 @@ export default function Jobs() {
               <h3 className="font-bold text-sm tracking-widest uppercase text-gray-900">Filters</h3>
               <button 
                 onClick={() => {
-                  setFilters({ q: "", location: "", jobType: "", experienceLevel: "" });
+                  setFilters({ q: "", location: "", jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 100000 });
                   setSelectedIndustries([]);
                 }}
                 className="text-xs font-bold text-blue-600 hover:text-blue-700"
@@ -177,6 +201,67 @@ export default function Jobs() {
             </div>
             
             <div className="space-y-6">
+              {/* Remote Work */}
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className={`w-4 h-4 rounded flex items-center justify-center border ${filters.isRemote ? 'bg-blue-600 border-blue-600' : 'border-gray-300 group-hover:border-blue-400'}`}>
+                    {filters.isRemote && <CheckCircle2 className="w-3 h-3 text-white" />}
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    name="isRemote"
+                    checked={filters.isRemote}
+                    onChange={handleFilterChange}
+                    className="hidden"
+                  />
+                  <span className="text-sm font-bold text-gray-900">Remote Work Only</span>
+                </label>
+              </div>
+
+              {/* Company Culture */}
+              <div>
+                <label className="text-xs font-bold text-gray-900 mb-3 block">Company Culture</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Innovative', 'Fast-paced', 'Flexible', 'Collaborative', 'Startup'].map(culture => (
+                    <span 
+                      key={culture}
+                      onClick={() => toggleCulture(culture)}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-full cursor-pointer transition-colors ${
+                        filters.companyCulture.includes(culture) 
+                          ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                          : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {culture}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Salary Range */}
+              <div>
+                <label className="text-xs font-bold text-gray-900 mb-3 block">Salary Range (Monthly AED)</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    name="salaryMin"
+                    value={filters.salaryMin || ''}
+                    onChange={handleSalaryChange}
+                    placeholder="Min"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                  />
+                  <span className="text-gray-400">-</span>
+                  <input 
+                    type="number" 
+                    name="salaryMax"
+                    value={filters.salaryMax || ''}
+                    onChange={handleSalaryChange}
+                    placeholder="Max"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
               {/* Industry */}
               <div>
                 <label className="text-xs font-bold text-gray-900 mb-3 block">Industry</label>
@@ -194,20 +279,6 @@ export default function Jobs() {
                       {ind}
                     </span>
                   ))}
-                </div>
-              </div>
-
-              {/* Salary Range */}
-              <div>
-                <label className="text-xs font-bold text-gray-900 mb-3 block">Salary Range (Monthly AED)</label>
-                <div className="h-1.5 w-full bg-gray-200 rounded-full relative mb-2">
-                  <div className="absolute left-[20%] right-[40%] h-full bg-blue-600 rounded-full" />
-                  <div className="absolute left-[20%] top-1/2 -translate-y-1/2 w-4 h-4 bg-blue-600 border-2 border-white rounded-full shadow-sm cursor-pointer" />
-                  <div className="absolute right-[40%] top-1/2 -translate-y-1/2 w-4 h-4 bg-blue-600 border-2 border-white rounded-full shadow-sm cursor-pointer" />
-                </div>
-                <div className="flex justify-between text-[10px] font-bold text-gray-400">
-                  <span>10k</span>
-                  <span>50k+</span>
                 </div>
               </div>
 
@@ -282,7 +353,7 @@ export default function Jobs() {
                 <p>No jobs found matching your criteria.</p>
                 <button 
                   onClick={() => {
-                    setFilters({ q: "", location: "", jobType: "", experienceLevel: "" });
+                    setFilters({ q: "", location: "", jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 100000 });
                     setSelectedIndustries([]);
                   }}
                   className="mt-4 text-blue-600 font-bold hover:underline"
@@ -341,6 +412,18 @@ export default function Jobs() {
                       <Clock className="w-3.5 h-3.5" /> 
                       {job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1)} Level
                     </span>
+                    {job.isRemote && (
+                      <span className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 border border-indigo-100">
+                        <Globe className="w-3.5 h-3.5" /> 
+                        Remote
+                      </span>
+                    )}
+                    {job.companyCulture && job.companyCulture.length > 0 && (
+                      <span className="px-3 py-1.5 bg-orange-50 text-orange-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 border border-orange-100">
+                        <Building2 className="w-3.5 h-3.5" /> 
+                        {job.companyCulture[0]}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">

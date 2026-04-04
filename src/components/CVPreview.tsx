@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { UserProfile, CVData } from "../types";
-import { Mail, Phone, MapPin, Globe, Linkedin, Download, FileText, LayoutTemplate, AlignLeft } from "lucide-react";
+import { Mail, Phone, MapPin, Globe, Linkedin, Download, FileText, LayoutTemplate, AlignLeft, Briefcase, GraduationCap, User } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -108,146 +108,199 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
         {template === "modern" ? (
           <div 
             ref={cvRef} 
-            className="p-12 bg-white text-gray-800 font-sans leading-relaxed shrink-0"
+            className="flex bg-white text-gray-800 font-sans shrink-0"
             style={{ width: "210mm", minHeight: "297mm" }}
           >
-            {/* Header */}
-            <header className="border-b-2 border-blue-600 pb-6 mb-8 flex gap-6 items-center">
+            {/* Left Column */}
+            <div className="w-[35%] bg-[#E8E9EB] p-8 pt-12 flex flex-col">
+              {/* Photo */}
               {profile.photoUrl && (
-                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-blue-100 shrink-0">
+                <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-white shadow-md mx-auto mb-8 shrink-0">
                   <img src={profile.photoUrl} alt={profile.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
                 </div>
               )}
-              <div className="flex-1">
-                <h1 className="text-4xl font-bold text-gray-900 mb-2 uppercase tracking-tight">{profile.name}</h1>
-                <p className="text-xl text-blue-600 font-semibold mb-4">{profile.headline || "Professional"}</p>
-                
-                <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    <span>{profile.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <span>{profile.phone || "N/A"}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    <span>{profile.location || "UAE"}</span>
-                  </div>
+
+              {/* Contact */}
+              <div className="mb-8">
+                <h2 className="text-lg font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-4">Contact</h2>
+                <div className="space-y-3 text-sm text-gray-700">
+                  {profile.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="w-4 h-4 text-[#2C3545] shrink-0" />
+                      <span className="break-all">{profile.phone}</span>
+                    </div>
+                  )}
+                  {profile.email && (
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-4 h-4 text-[#2C3545] shrink-0" />
+                      <span className="break-all">{profile.email}</span>
+                    </div>
+                  )}
+                  {profile.location && (
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-4 h-4 text-[#2C3545] shrink-0" />
+                      <span>{profile.location}</span>
+                    </div>
+                  )}
                   {cvData.linkedin && (
-                    <div className="flex items-center gap-2">
-                      <Linkedin className="w-4 h-4 text-gray-400" />
-                      <span className="truncate">{cvData.linkedin}</span>
+                    <div className="flex items-center gap-3">
+                      <Linkedin className="w-4 h-4 text-[#2C3545] shrink-0" />
+                      <span className="break-all">{cvData.linkedin}</span>
                     </div>
                   )}
                 </div>
               </div>
-            </header>
 
-            {/* Summary */}
-            {cvData.summary && (
-              <section className="mb-8">
-                <h2 className="text-lg font-bold text-gray-900 uppercase border-b border-gray-200 pb-1 mb-3 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" /> Professional Summary
-                </h2>
-                <p className="text-gray-700 text-sm whitespace-pre-wrap">{cvData.summary}</p>
-              </section>
-            )}
-
-            {/* Experience */}
-            {cvData.experience.length > 0 && (
-              <section className="mb-8">
-                <h2 className="text-lg font-bold text-gray-900 uppercase border-b border-gray-200 pb-1 mb-4 flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-blue-600" /> Professional Experience
-                </h2>
-                <div className="space-y-6">
-                  {cvData.experience.map((exp, index) => (
-                    <div key={index} className="relative pl-4 border-l-2 border-gray-100">
-                      <div className="flex justify-between items-start mb-1">
-                        <h3 className="font-bold text-gray-900">{exp.position}</h3>
-                        <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                          {exp.startDate} - {exp.current ? "Present" : exp.endDate}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-600 mb-2">{exp.company} | {exp.location}</p>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{exp.description}</p>
+              {/* Personal Info (UAE) */}
+              <div className="mb-8">
+                <h2 className="text-lg font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-4">Info</h2>
+                <div className="space-y-3 text-sm text-gray-700">
+                  {cvData.dateOfBirth && (
+                    <div>
+                      <span className="font-bold block text-[#2C3545]">Date of Birth</span>
+                      <span>{cvData.dateOfBirth}</span>
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Education */}
-            {cvData.education.length > 0 && (
-              <section className="mb-8">
-                <h2 className="text-lg font-bold text-gray-900 uppercase border-b border-gray-200 pb-1 mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" /> Education
-                </h2>
-                <div className="grid grid-cols-1 gap-4">
-                  {cvData.education.map((edu, index) => (
-                    <div key={index} className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-gray-900">{edu.degree} in {edu.field}</h3>
-                        <p className="text-sm text-gray-600">{edu.institution}</p>
-                      </div>
-                      <span className="text-xs text-gray-500">{edu.startDate} - {edu.endDate}</span>
+                  )}
+                  {(cvData.nationality || profile.nationality) && (
+                    <div>
+                      <span className="font-bold block text-[#2C3545]">Nationality</span>
+                      <span>{cvData.nationality || profile.nationality}</span>
                     </div>
-                  ))}
+                  )}
+                  {(cvData.visaStatus || profile.visaStatus) && (
+                    <div>
+                      <span className="font-bold block text-[#2C3545]">Visa Status</span>
+                      <span className="capitalize">{cvData.visaStatus || profile.visaStatus}</span>
+                    </div>
+                  )}
+                  {cvData.noticePeriod && (
+                    <div>
+                      <span className="font-bold block text-[#2C3545]">Notice Period</span>
+                      <span>{cvData.noticePeriod}</span>
+                    </div>
+                  )}
                 </div>
-              </section>
-            )}
+              </div>
 
-            {/* Skills & Languages */}
-            <div className="grid grid-cols-2 gap-8 mb-8">
+              {/* Skills */}
               {cvData.skills.length > 0 && (
-                <section>
-                  <h2 className="text-lg font-bold text-gray-900 uppercase border-b border-gray-200 pb-1 mb-3">Skills</h2>
-                  <div className="flex flex-wrap gap-2">
+                <div className="mb-8">
+                  <h2 className="text-lg font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-4">Skills</h2>
+                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1.5">
                     {cvData.skills.map((skill, index) => (
-                      <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">
-                        {skill}
-                      </span>
+                      <li key={index}>{skill}</li>
                     ))}
-                  </div>
-                </section>
+                  </ul>
+                </div>
               )}
+
+              {/* Languages */}
               {cvData.languages.length > 0 && (
-                <section>
-                  <h2 className="text-lg font-bold text-gray-900 uppercase border-b border-gray-200 pb-1 mb-3">Languages</h2>
-                  <div className="flex flex-wrap gap-2">
+                <div className="mb-8">
+                  <h2 className="text-lg font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-4">Languages</h2>
+                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1.5">
                     {cvData.languages.map((lang, index) => (
-                      <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">
-                        {lang}
-                      </span>
+                      <li key={index}>{lang}</li>
                     ))}
-                  </div>
-                </section>
+                  </ul>
+                </div>
+              )}
+
+              {/* Certifications */}
+              {cvData.certifications && cvData.certifications.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="text-lg font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-4">Certifications</h2>
+                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1.5">
+                    {cvData.certifications.map((cert, index) => (
+                      <li key={index} className="leading-snug">{cert}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
 
-            {/* UAE Specific Info */}
-            <section className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h2 className="text-sm font-bold text-gray-900 uppercase mb-3">Personal Information (UAE Market)</h2>
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <span className="text-gray-500 block mb-1">Nationality</span>
-                  <span className="font-semibold text-gray-900">{profile.nationality || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block mb-1">Visa Status</span>
-                  <span className="font-semibold text-gray-900 capitalize">{profile.visaStatus || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block mb-1">Notice Period</span>
-                  <span className="font-semibold text-gray-900">{cvData.noticePeriod || "Immediate"}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block mb-1">Current Location</span>
-                  <span className="font-semibold text-gray-900">{profile.location || "UAE"}</span>
-                </div>
+            {/* Right Column */}
+            <div className="w-[65%] flex flex-col bg-white">
+              {/* Header */}
+              <div className="bg-[#2C3545] text-white p-12 flex flex-col justify-center min-h-[220px]">
+                <h1 className="text-5xl font-bold tracking-widest uppercase mb-3">{profile.name}</h1>
+                <h2 className="text-xl tracking-widest uppercase text-gray-300">{profile.headline || "Professional"}</h2>
               </div>
-            </section>
+
+              {/* Main Content */}
+              <div className="p-10 flex-1 space-y-8">
+                {/* Profile Summary */}
+                {cvData.summary && (
+                  <section>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-[#2C3545] text-white flex items-center justify-center shrink-0">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-xl font-bold tracking-widest text-[#2C3545] uppercase">Profile</h3>
+                    </div>
+                    <div className="pl-14">
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{cvData.summary}</p>
+                    </div>
+                  </section>
+                )}
+
+                {/* Experience */}
+                {cvData.experience.length > 0 && (
+                  <section>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-[#2C3545] text-white flex items-center justify-center shrink-0">
+                        <Briefcase className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-xl font-bold tracking-widest text-[#2C3545] uppercase">Work Experience</h3>
+                    </div>
+                    <div className="pl-5">
+                      <div className="border-l border-gray-300 pl-8 space-y-6 py-2">
+                        {cvData.experience.map((exp, index) => (
+                          <div key={index} className="relative">
+                            <div className="absolute -left-[38px] top-1.5 w-3 h-3 bg-white border-2 border-[#2C3545] rounded-full"></div>
+                            <div className="flex justify-between items-baseline mb-1">
+                              <h4 className="font-bold text-gray-900 text-lg">{exp.company}</h4>
+                              <span className="text-sm text-gray-600 font-medium">{exp.startDate} - {exp.current ? "Present" : exp.endDate}</span>
+                            </div>
+                            <p className="text-sm font-bold text-[#2C3545] mb-2">{exp.position} {exp.location ? `| ${exp.location}` : ''}</p>
+                            <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                              {exp.description}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                {/* Education */}
+                {cvData.education.length > 0 && (
+                  <section>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-[#2C3545] text-white flex items-center justify-center shrink-0">
+                        <GraduationCap className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-xl font-bold tracking-widest text-[#2C3545] uppercase">Education</h3>
+                    </div>
+                    <div className="pl-5">
+                      <div className="border-l border-gray-300 pl-8 space-y-6 py-2">
+                        {cvData.education.map((edu, index) => (
+                          <div key={index} className="relative">
+                            <div className="absolute -left-[38px] top-1.5 w-3 h-3 bg-white border-2 border-[#2C3545] rounded-full"></div>
+                            <div className="flex justify-between items-baseline mb-1">
+                              <h4 className="font-bold text-gray-900 text-lg">{edu.degree}</h4>
+                              <span className="text-sm text-gray-600 font-medium">{edu.startDate} - {edu.endDate}</span>
+                            </div>
+                            <p className="text-sm font-bold text-[#2C3545] mb-1">{edu.institution}</p>
+                            <p className="text-sm text-gray-700">{edu.field}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+                )}
+              </div>
+            </div>
           </div>
         ) : (
           <div 
@@ -321,13 +374,28 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
               </section>
             )}
 
-            {/* Languages */}
-            {cvData.languages.length > 0 && (
+            {/* Certifications */}
+            {cvData.certifications && cvData.certifications.length > 0 && (
               <section className="mb-6">
-                <h2 className="text-lg font-bold uppercase border-b border-black pb-1 mb-2">Languages</h2>
-                <p className="text-sm leading-snug">{cvData.languages.join(", ")}</p>
+                <h2 className="text-lg font-bold uppercase border-b border-black pb-1 mb-3">Certification</h2>
+                <ul className="list-none text-sm space-y-1">
+                  {cvData.certifications.map((cert, index) => (
+                    <li key={index}>{cert}</li>
+                  ))}
+                </ul>
               </section>
             )}
+
+            {/* Additional Information */}
+            <section className="mb-6">
+              <h2 className="text-lg font-bold uppercase border-b border-black pb-1 mb-3">Additional Information</h2>
+              <ul className="list-disc list-inside text-sm space-y-2">
+                {cvData.dateOfBirth && <li>Date of Birth: {cvData.dateOfBirth}</li>}
+                {(cvData.nationality || profile.nationality) && <li>Nationality: {cvData.nationality || profile.nationality}</li>}
+                {cvData.languages && cvData.languages.length > 0 && <li>Languages: {cvData.languages.join(", ")}</li>}
+                {(cvData.visaStatus || profile.visaStatus) && <li>Visa Status: {cvData.visaStatus || profile.visaStatus}</li>}
+              </ul>
+            </section>
           </div>
         )}
       </div>

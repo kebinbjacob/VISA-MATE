@@ -6,6 +6,10 @@ export async function fetchJobs(filters?: {
   location?: string;
   jobType?: JobType;
   experienceLevel?: ExperienceLevel;
+  isRemote?: boolean;
+  companyCulture?: string[];
+  salaryMin?: number;
+  salaryMax?: number;
 }) {
   try {
     const query = filters?.q || "developer";
@@ -26,6 +30,10 @@ export async function fetchJobs(filters?: {
     const searchPrompt = `Perform a deep internet search across all major job boards (LinkedIn, Indeed, Bayt, GulfTalent, NaukriGulf, etc.) and company career pages to find 10 recent, real job postings matching the following criteria:
     - Job Title/Keyword: "${query}"
     - Location: "${location}"
+    ${filters?.isRemote ? '- Must be a Remote position' : ''}
+    ${filters?.companyCulture && filters.companyCulture.length > 0 ? `- Company Culture should align with: ${filters.companyCulture.join(', ')}` : ''}
+    ${filters?.salaryMin ? `- Minimum Salary: ${filters.salaryMin} AED` : ''}
+    ${filters?.salaryMax ? `- Maximum Salary: ${filters.salaryMax} AED` : ''}
     
     CRITICAL: The "sourceUrl" MUST be a direct, deep link to the specific job posting where a user can apply. DO NOT provide generic homepages (e.g., do not just provide "https://linkedin.com"). If you cannot find the exact direct link, provide the most specific search result URL possible.
     
@@ -41,7 +49,9 @@ export async function fetchJobs(filters?: {
     - jobType: One of "full_time", "part_time", "contract", "freelance".
     - experienceLevel: One of "entry", "mid", "senior", "manager".
     - salaryMin: (Optional) minimum salary in AED (number only).
-    - salaryMax: (Optional) maximum salary in AED (number only).`;
+    - salaryMax: (Optional) maximum salary in AED (number only).
+    - isRemote: (Optional) boolean indicating if the job is remote.
+    - companyCulture: (Optional) array of strings describing the company culture.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -119,6 +129,8 @@ export async function fetchJobs(filters?: {
         experienceLevel: raw.experienceLevel || "mid",
         salaryMin: raw.salaryMin,
         salaryMax: raw.salaryMax,
+        isRemote: raw.isRemote,
+        companyCulture: raw.companyCulture || [],
         skills: [],
         postedAt: new Date().toISOString(),
         isVerified: true,
@@ -133,6 +145,18 @@ export async function fetchJobs(filters?: {
 
     if (filters?.experienceLevel) {
       mappedJobs = mappedJobs.filter((j) => j.experienceLevel === filters.experienceLevel);
+    }
+
+    if (filters?.isRemote) {
+      mappedJobs = mappedJobs.filter((j) => j.isRemote || j.location.toLowerCase().includes('remote'));
+    }
+
+    if (filters?.salaryMin) {
+      mappedJobs = mappedJobs.filter((j) => !j.salaryMax || j.salaryMax >= filters.salaryMin!);
+    }
+
+    if (filters?.salaryMax) {
+      mappedJobs = mappedJobs.filter((j) => !j.salaryMin || j.salaryMin <= filters.salaryMax!);
     }
 
     return mappedJobs;
@@ -211,6 +235,15 @@ export async function fetchJobs(filters?: {
     }
     if (filters?.experienceLevel) {
       filteredMockJobs = filteredMockJobs.filter((j) => j.experienceLevel === filters.experienceLevel);
+    }
+    if (filters?.isRemote) {
+      filteredMockJobs = filteredMockJobs.filter((j) => j.isRemote || j.location.toLowerCase().includes('remote'));
+    }
+    if (filters?.salaryMin) {
+      filteredMockJobs = filteredMockJobs.filter((j) => !j.salaryMax || j.salaryMax >= filters.salaryMin!);
+    }
+    if (filters?.salaryMax) {
+      filteredMockJobs = filteredMockJobs.filter((j) => !j.salaryMin || j.salaryMin <= filters.salaryMax!);
     }
     
     return filteredMockJobs;

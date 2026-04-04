@@ -145,6 +145,10 @@ export async function extractCVData(fileBase64: string, mimeType: string): Promi
             },
             skills: { type: Type.ARRAY, items: { type: Type.STRING } },
             languages: { type: Type.ARRAY, items: { type: Type.STRING } },
+            certifications: { type: Type.ARRAY, items: { type: Type.STRING } },
+            dateOfBirth: { type: Type.STRING },
+            nationality: { type: Type.STRING },
+            visaStatus: { type: Type.STRING },
             noticePeriod: { type: Type.STRING },
             linkedin: { type: Type.STRING },
             github: { type: Type.STRING }

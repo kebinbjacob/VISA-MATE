@@ -267,6 +267,21 @@ export default function CVBuilder() {
     setCvData(prev => ({ ...prev, languages: prev.languages.filter(l => l !== lang) }));
   };
 
+  const handleCertificationAdd = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && e.currentTarget.value) {
+      const cert = e.currentTarget.value.trim();
+      const currentCerts = cvData.certifications || [];
+      if (!currentCerts.includes(cert)) {
+        setCvData(prev => ({ ...prev, certifications: [...currentCerts, cert] }));
+      }
+      e.currentTarget.value = '';
+    }
+  };
+
+  const removeCertification = (cert: string) => {
+    setCvData(prev => ({ ...prev, certifications: (prev.certifications || []).filter(c => c !== cert) }));
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -432,6 +447,36 @@ export default function CVBuilder() {
                             <option value="3 Months">3 Months</option>
                           </select>
                         </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-gray-700">Date of Birth</label>
+                          <input 
+                            type="text" 
+                            value={cvData.dateOfBirth || ""}
+                            onChange={(e) => setCvData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                            placeholder="e.g. 24 May 2001"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-gray-700">Nationality</label>
+                          <input 
+                            type="text" 
+                            value={cvData.nationality || profile?.nationality || ""}
+                            onChange={(e) => setCvData(prev => ({ ...prev, nationality: e.target.value }))}
+                            placeholder="e.g. Indian"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-gray-700">Visa Status</label>
+                          <input 
+                            type="text" 
+                            value={cvData.visaStatus || profile?.visaStatus || ""}
+                            onChange={(e) => setCvData(prev => ({ ...prev, visaStatus: e.target.value }))}
+                            placeholder="e.g. Resident Visa (UAE)"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all" 
+                          />
+                        </div>
                       </div>
 
                       <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
@@ -442,7 +487,7 @@ export default function CVBuilder() {
                           <div>
                             <h3 className="font-bold text-blue-900 mb-1">UAE Market Sync</h3>
                             <p className="text-sm text-blue-700 leading-relaxed">
-                              We've automatically synced your <strong>Nationality</strong> ({profile?.nationality}) and <strong>Visa Status</strong> ({profile?.visaStatus}) from your profile. These are critical for UAE employers.
+                              We've automatically synced your <strong>Nationality</strong> and <strong>Visa Status</strong> from your profile if available. These are critical for UAE employers.
                             </p>
                           </div>
                         </div>
@@ -746,6 +791,35 @@ export default function CVBuilder() {
                               <span key={index} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg font-bold text-sm group">
                                 {lang}
                                 <button onClick={() => removeLanguage(lang)} className="text-emerald-300 hover:text-emerald-600">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600">
+                            <CheckCircle2 className="w-5 h-5" />
+                          </div>
+                          <h2 className="text-2xl font-bold text-gray-900">Certifications</h2>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <label className="text-sm font-bold text-gray-700">Add your certifications (Press Enter to add)</label>
+                          <input
+                            type="text"
+                            onKeyDown={handleCertificationAdd}
+                            placeholder="e.g. Certified Professional Coder (CPC) - AAPC"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-600 outline-none transition-all"
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            {(cvData.certifications || []).map((cert, index) => (
+                              <span key={index} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg font-bold text-sm group">
+                                {cert}
+                                <button onClick={() => removeCertification(cert)} className="text-purple-300 hover:text-purple-600">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </span>

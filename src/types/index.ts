@@ -36,6 +36,8 @@ export interface Job {
   expiresAt?: string;
   isVerified: boolean;
   isActive: boolean;
+  isRemote?: boolean;
+  companyCulture?: string[];
 }
 
 export type ApplicationStatus = "saved" | "applied" | "interview" | "offer" | "rejected";
@@ -74,6 +76,10 @@ export interface CVData {
   education: Education[];
   skills: string[];
   languages: string[];
+  certifications?: string[];
+  dateOfBirth?: string;
+  nationality?: string;
+  visaStatus?: string;
   noticePeriod: string;
   linkedin: string;
   github?: string;
