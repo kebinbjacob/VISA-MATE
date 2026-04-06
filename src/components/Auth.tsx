@@ -19,27 +19,6 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) throw error;
-      // Note: getOrCreateUserProfile will be handled by the auth state listener 
-      // or a Supabase trigger after redirect
-    } catch (error: any) {
-      console.error("Error signing in with Google:", error);
-      setError(error.message || "Failed to sign in with Google.");
-      setIsLoading(false);
-    }
-  };
-
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
@@ -345,30 +324,7 @@ export default function Auth() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">Or continue with</span>
-                </div>
-              </div>
-
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                type="button"
-                className="w-full py-3 border border-gray-300 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                )}
-                Google
-              </button>
-              
+            <div className="space-y-4 mt-6">
               <p className="text-[10px] text-center text-gray-400">
                 By signing in, you agree to our Terms of Service and Privacy Policy.
                 VisaMate is compliant with UAE PDPL.
