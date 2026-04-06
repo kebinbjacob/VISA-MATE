@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useAuth } from "./FirebaseProvider";
+import { useAuth } from "./AuthProvider";
 import { getOrCreateUserProfile, saveCVData } from "../services/userService";
 import { UserProfile, CVData, WorkExperience, Education } from "../types";
 import { enhanceSummary, extractCVData, enhanceExperienceDescription } from "../services/cvService";
@@ -66,7 +66,7 @@ export default function CVBuilder() {
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
       try {
-        await saveCVData(user.uid, cvData);
+        await saveCVData(user.id, cvData);
         setLastSaved(new Date());
       } catch (error) {
         console.error("Auto-save failed:", error);
@@ -105,7 +105,7 @@ export default function CVBuilder() {
     if (!user) return;
     setSaving(true);
     try {
-      await saveCVData(user.uid, cvData);
+      await saveCVData(user.id, cvData);
       setLastSaved(new Date());
     } catch (error) {
       console.error("Error saving CV data:", error);
@@ -170,7 +170,7 @@ export default function CVBuilder() {
         
         // Explicitly trigger save after extraction
         if (user) {
-           await saveCVData(user.uid, {
+           await saveCVData(user.id, {
              ...cvData,
              ...extractedData
            });

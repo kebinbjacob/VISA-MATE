@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "./FirebaseProvider";
+import { useAuth } from "./AuthProvider";
 import { getUserVisas } from "../services/visaService";
 import { getUserApplications } from "../services/applicationService";
 import { getUserDocuments } from "../services/documentService";
@@ -35,10 +35,10 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) {
       Promise.all([
-        getUserVisas(user.uid),
-        getUserApplications(user.uid),
-        getUserDocuments(user.uid),
-        getUserCVReports(user.uid)
+        getUserVisas(user.id),
+        getUserApplications(user.id),
+        getUserDocuments(user.id),
+        getUserCVReports(user.id)
       ]).then(async ([v, a, d, cvs]) => {
         setVisas(v);
         setApplications(a);

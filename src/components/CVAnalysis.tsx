@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { UploadCloud, FileText, CheckCircle2, AlertTriangle, Key, LayoutTemplate, Sparkles, Copy, Loader2 } from "lucide-react";
-import { useAuth } from "./FirebaseProvider";
+import { useAuth } from "./AuthProvider";
 import { addCVReport, getUserCVReports, CVReport } from "../services/cvService";
 import { formatDate } from "../lib/utils";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -25,7 +25,7 @@ export default function CVAnalysis() {
   const loadHistory = async () => {
     if (!user) return;
     try {
-      const reports = await getUserCVReports(user.uid);
+      const reports = await getUserCVReports(user.id);
       setHistory(reports);
     } catch (error) {
       console.error("Failed to load CV reports:", error);
@@ -77,7 +77,7 @@ export default function CVAnalysis() {
       const mimeType = selectedFile.type || 'application/pdf';
 
       // @ts-ignore
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+      const apiKey = process.env.GEMINI_API_KEY;
       
       console.log("CV Analysis - API Key loaded:", !!apiKey);
       
@@ -148,14 +148,14 @@ export default function CVAnalysis() {
 
       if (user) {
         try {
-          await addCVReport(user.uid, reportData);
+          await addCVReport(user.id, reportData);
           await loadHistory();
         } catch (error) {
           console.error("Failed to save CV report:", error);
         }
       }
 
-      setCurrentReport({ ...reportData, userId: user?.uid || '', createdAt: new Date().toISOString() });
+      setCurrentReport({ ...reportData, userId: user?.id || '', createdAt: new Date().toISOString() });
       setIsAnalyzing(false);
       setShowResults(true);
     } catch (error) {

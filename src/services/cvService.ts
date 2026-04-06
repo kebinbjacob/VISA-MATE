@@ -1,5 +1,4 @@
-import { db } from "../firebase";
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from "firebase/firestore";
+import { supabase } from "../supabase";
 import { GoogleGenAI, Type } from "@google/genai";
 import { CVData } from "../types";
 
@@ -15,34 +14,53 @@ export interface CVReport {
 }
 
 export async function getUserCVReports(userId: string): Promise<CVReport[]> {
-  const q = query(
-    collection(db, "cvReports"),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
+  const { data, error } = await supabase
+    .from('cv_reports')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Error fetching CV reports:", error);
+    return [];
+  }
+
+  return data.map(report => ({
+    id: report.id,
+    userId: report.user_id,
+    fileName: report.file_name,
+    score: report.score,
+    keywordsToAdd: report.keywords_to_add,
+    layoutImprovements: report.layout_improvements,
+    summaryRewrite: report.summary_rewrite,
+    createdAt: report.created_at
   })) as CVReport[];
 }
 
 export async function addCVReport(userId: string, reportData: Omit<CVReport, "id" | "userId" | "createdAt">) {
   const newReport = {
-    ...reportData,
-    userId,
-    createdAt: serverTimestamp(),
+    user_id: userId,
+    file_name: reportData.fileName,
+    score: reportData.score,
+    keywords_to_add: reportData.keywordsToAdd,
+    layout_improvements: reportData.layoutImprovements,
+    summary_rewrite: reportData.summaryRewrite
   };
   
-  const docRef = await addDoc(collection(db, "cvReports"), newReport);
-  return docRef.id;
+  const { data, error } = await supabase
+    .from('cv_reports')
+    .insert([newReport])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data.id;
 }
 
 export async function enhanceSummary(summary: string, headline: string): Promise<string> {
   try {
     // @ts-ignore
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+    const apiKey = process.env.GEMINI_API_KEY;
     
     console.log("CV Service - API Key loaded:", !!apiKey);
     
@@ -84,7 +102,7 @@ export async function enhanceSummary(summary: string, headline: string): Promise
 export async function extractCVData(fileBase64: string, mimeType: string): Promise<Partial<CVData>> {
   try {
     // @ts-ignore
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+    const apiKey = process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
       throw new Error("No Gemini API key found for CV extraction.");
@@ -171,7 +189,7 @@ export async function extractCVData(fileBase64: string, mimeType: string): Promi
 export async function enhanceExperienceDescription(description: string, position: string, company: string): Promise<string> {
   try {
     // @ts-ignore
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+    const apiKey = process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
       console.warn("No Gemini API key found for CV enhancement.");

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { fetchJobs } from "../services/jobService";
 import { getUserApplications, addApplication, deleteApplication } from "../services/applicationService";
 import { Job, JobType, ExperienceLevel, Application } from "../types";
-import { useAuth } from "./FirebaseProvider";
+import { useAuth } from "./AuthProvider";
 import { Search, MapPin, Briefcase, DollarSign, Filter, ExternalLink, CheckCircle2, Bookmark, ChevronLeft, ChevronRight, Globe, Clock, ShieldCheck, Building2 } from "lucide-react";
 import { formatCurrency, formatDate } from "../lib/utils";
 
@@ -33,7 +33,7 @@ export default function Jobs() {
   const loadSavedJobs = async () => {
     if (!user) return;
     try {
-      const apps = await getUserApplications(user.uid);
+      const apps = await getUserApplications(user.id);
       const savedMap = new Map();
       apps.forEach(app => {
         if (app.status === 'saved') {
@@ -101,7 +101,7 @@ export default function Jobs() {
         });
       } else {
         // Save
-        const appId = await addApplication(user.uid, job, 'saved');
+        const appId = await addApplication(user.id, job, 'saved');
         setSavedJobs(prev => {
           const next = new Map(prev);
           next.set(job.id, appId);

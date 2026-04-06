@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { useAuth } from "./FirebaseProvider";
+import { useAuth } from "./AuthProvider";
 import { getUserApplications, updateApplicationStatus, deleteApplication } from "../services/applicationService";
 import { Application, ApplicationStatus, Job } from "../types";
-import { Briefcase, MapPin, Globe, Clock, CheckCircle2, XCircle, ChevronDown, Trash2, ExternalLink } from "lucide-react";
+import { Briefcase, MapPin, Globe, Clock, Trash2, ExternalLink, GripVertical } from "lucide-react";
 import { formatCurrency } from "../lib/utils";
+import { DndContext, DragEndEvent, closestCorners, useDraggable, useDroppable } from "@dnd-kit/core";
 
-const STATUS_COLORS: Record<ApplicationStatus, { bg: string, text: string, border: string }> = {
-  saved: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" },
-  applied: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
-  interview: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
-  offer: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
-  rejected: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" }
+const STATUS_COLORS: Record<ApplicationStatus, { bg: string, text: string, border: string, header: string }> = {
+  saved: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200", header: "bg-gray-200" },
+  applied: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", header: "bg-blue-200" },
+  interview: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", header: "bg-purple-200" },
+  offer: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", header: "bg-emerald-200" },
+  rejected: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", header: "bg-red-200" }
 };
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -21,11 +22,108 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
   rejected: "Rejected"
 };
 
+const COLUMNS: ApplicationStatus[] = ['saved', 'applied', 'interview', 'offer', 'rejected'];
+
+function JobCard({ app, onDelete }: { app: Application & { job?: Job }, onDelete: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: app.id,
+    data: { status: app.status }
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    zIndex: isDragging ? 999 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  } : undefined;
+
+  const job = app.job;
+  if (!job) return null;
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={`bg-white rounded-2xl p-4 border shadow-sm mb-3 relative group ${isDragging ? 'shadow-xl ring-2 ring-blue-500 border-transparent' : 'border-gray-200 hover:border-blue-300 hover:shadow-md'} transition-all`}
+    >
+      <div 
+        {...attributes} 
+        {...listeners}
+        className="absolute top-3 right-3 p-1 text-gray-300 hover:text-gray-600 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <GripVertical className="w-5 h-5" />
+      </div>
+      
+      <h3 className="font-bold text-gray-900 pr-8 leading-tight mb-1">{job.title}</h3>
+      <p className="text-sm text-gray-600 font-medium mb-3">{job.company}</p>
+      
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <MapPin className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{job.location}</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Briefcase className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{job.salaryMin ? `${formatCurrency(job.salaryMin)} - ${formatCurrency(job.salaryMax || job.salaryMin)}` : "Salary Negotiable"}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <a 
+          href={job.sourceUrl} 
+          target="_blank" 
+          rel="noreferrer"
+          className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          View Job <ExternalLink className="w-3 h-3" />
+        </a>
+        <button 
+          onClick={(e) => { e.stopPropagation(); onDelete(app.id); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="text-gray-400 hover:text-red-600 transition-colors"
+          title="Remove"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function KanbanColumn({ status, title, applications, onDelete }: { status: ApplicationStatus, title: string, applications: (Application & { job?: Job })[], onDelete: (id: string) => void }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: status,
+  });
+
+  return (
+    <div className="flex flex-col w-80 shrink-0">
+      <div className={`px-4 py-3 rounded-t-2xl font-bold text-sm flex items-center justify-between ${STATUS_COLORS[status].header} text-gray-800`}>
+        <span>{title}</span>
+        <span className="bg-white/50 px-2 py-0.5 rounded-full text-xs">{applications.length}</span>
+      </div>
+      <div 
+        ref={setNodeRef}
+        className={`flex-1 p-3 rounded-b-2xl border-x border-b min-h-[500px] transition-colors ${
+          isOver ? 'bg-blue-50 border-blue-200' : 'bg-gray-50/50 border-gray-200'
+        }`}
+      >
+        {applications.map(app => (
+          <JobCard key={app.id} app={app} onDelete={onDelete} />
+        ))}
+        {applications.length === 0 && (
+          <div className="h-24 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center text-sm text-gray-400 font-medium">
+            Drop here
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function JobTracker() {
   const { user } = useAuth();
   const [applications, setApplications] = useState<(Application & { job?: Job })[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ApplicationStatus | 'all'>('all');
 
   useEffect(() => {
     if (user) {
@@ -37,7 +135,7 @@ export default function JobTracker() {
     if (!user) return;
     setLoading(true);
     try {
-      const apps = await getUserApplications(user.uid);
+      const apps = await getUserApplications(user.id);
       setApplications(apps);
     } catch (error) {
       console.error("Failed to load applications:", error);
@@ -46,14 +144,30 @@ export default function JobTracker() {
     }
   };
 
-  const handleStatusChange = async (appId: string, newStatus: ApplicationStatus) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over) return;
+
+    const appId = active.id as string;
+    const newStatus = over.id as ApplicationStatus;
+    const currentStatus = active.data.current?.status;
+
+    if (currentStatus === newStatus) return;
+
+    // Optimistic update
+    setApplications(prev => prev.map(app => 
+      app.id === appId ? { ...app, status: newStatus } : app
+    ));
+
     try {
       await updateApplicationStatus(appId, newStatus);
-      setApplications(prev => prev.map(app => 
-        app.id === appId ? { ...app, status: newStatus } : app
-      ));
     } catch (error) {
       console.error("Failed to update status:", error);
+      // Revert on failure
+      setApplications(prev => prev.map(app => 
+        app.id === appId ? { ...app, status: currentStatus } : app
+      ));
     }
   };
 
@@ -67,10 +181,6 @@ export default function JobTracker() {
     }
   };
 
-  const filteredApps = activeTab === 'all' 
-    ? applications 
-    : applications.filter(app => app.status === activeTab);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -80,129 +190,30 @@ export default function JobTracker() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
-      <div className="mb-10">
+    <div className="max-w-7xl mx-auto pb-12 h-full flex flex-col">
+      <div className="mb-8 shrink-0">
         <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">
           Application <span className="text-blue-700">Tracker.</span>
         </h1>
         <p className="text-gray-600 max-w-2xl text-lg">
-          Manage your saved jobs and track your application progress all in one place.
+          Drag and drop your saved jobs to track your application progress.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex overflow-x-auto pb-4 mb-6 gap-2 hide-scrollbar">
-        <button
-          onClick={() => setActiveTab('all')}
-          className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${
-            activeTab === 'all' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-          }`}
-        >
-          All Applications ({applications.length})
-        </button>
-        {(Object.keys(STATUS_LABELS) as ApplicationStatus[]).map(status => (
-          <button
-            key={status}
-            onClick={() => setActiveTab(status)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${
-              activeTab === status 
-                ? `${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text} border ${STATUS_COLORS[status].border}` 
-                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-            }`}
-          >
-            {STATUS_LABELS[status]} ({applications.filter(a => a.status === status).length})
-          </button>
-        ))}
-      </div>
-
-      {/* Job List */}
-      <div className="space-y-4">
-        {filteredApps.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 border border-gray-100 text-center text-gray-500">
-            <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-lg font-medium text-gray-900 mb-2">No applications found</p>
-            <p>You haven't {activeTab === 'all' ? 'saved or applied to any jobs' : `moved any jobs to the "${STATUS_LABELS[activeTab]}" stage`} yet.</p>
-          </div>
-        ) : (
-          filteredApps.map(app => {
-            const job = app.job;
-            if (!job) return null; // Skip if job details couldn't be loaded
-
-            return (
-              <div key={app.id} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex flex-col md:flex-row gap-6">
-                  {/* Logo Placeholder */}
-                  <div className="w-16 h-16 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center shrink-0 hidden sm:flex">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{job.company.substring(0, 2)}</span>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
-                          {job.title}
-                        </h2>
-                        <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                          <span className="font-medium text-gray-900">{job.company}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {job.location}</span>
-                        </p>
-                      </div>
-
-                      {/* Status Dropdown */}
-                      <div className="relative inline-block text-left shrink-0">
-                        <select
-                          value={app.status}
-                          onChange={(e) => handleStatusChange(app.id, e.target.value as ApplicationStatus)}
-                          className={`appearance-none pl-4 pr-10 py-2 rounded-xl text-sm font-bold border cursor-pointer outline-none transition-colors ${STATUS_COLORS[app.status].bg} ${STATUS_COLORS[app.status].text} ${STATUS_COLORS[app.status].border}`}
-                        >
-                          {(Object.keys(STATUS_LABELS) as ApplicationStatus[]).map(s => (
-                            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${STATUS_COLORS[app.status].text}`} />
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2 mb-4 mt-4">
-                      <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-semibold rounded-lg flex items-center gap-1.5">
-                        <Briefcase className="w-3.5 h-3.5 text-gray-400" /> 
-                        {job.salaryMin ? `${formatCurrency(job.salaryMin)} - ${formatCurrency(job.salaryMax || job.salaryMin)}` : "Salary Negotiable"}
-                      </span>
-                      <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-semibold rounded-lg flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-gray-400" /> 
-                        {job.jobType.replace("_", " ")}
-                      </span>
-                      <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-semibold rounded-lg flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-gray-400" /> 
-                        Added {new Date(app.appliedAt?.seconds ? app.appliedAt.seconds * 1000 : Date.now()).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                      <a 
-                        href={job.sourceUrl} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                      >
-                        View Original Posting <ExternalLink className="w-4 h-4" />
-                      </a>
-                      
-                      <button 
-                        onClick={() => handleDelete(app.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Remove from tracker"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+      <div className="flex-1 overflow-x-auto hide-scrollbar pb-8">
+        <div className="flex gap-6 h-full items-start">
+          <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+            {COLUMNS.map(status => (
+              <KanbanColumn 
+                key={status}
+                status={status}
+                title={STATUS_LABELS[status]}
+                applications={applications.filter(a => a.status === status)}
+                onDelete={handleDelete}
+              />
+            ))}
+          </DndContext>
+        </div>
       </div>
     </div>
   );

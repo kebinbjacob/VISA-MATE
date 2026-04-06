@@ -1,13 +1,5 @@
 import React, { useState } from "react";
-import { auth } from "../firebase";
-import { 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
-  updateProfile,
-  sendPasswordResetEmail
-} from "firebase/auth";
+import { supabase } from "../supabase";
 import { LogIn, Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { getOrCreateUserProfile } from "../services/userService";
 
@@ -19,6 +11,11 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [location, setLocation] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [visaStatus, setVisaStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -26,14 +23,19 @@ export default function Auth() {
     setIsLoading(true);
     setError(null);
     setMessage(null);
-    const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      await getOrCreateUserProfile(result.user);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+      // Note: getOrCreateUserProfile will be handled by the auth state listener 
+      // or a Supabase trigger after redirect
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
       setError(error.message || "Failed to sign in with Google.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -48,7 +50,10 @@ export default function Auth() {
     setError(null);
     setMessage(null);
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
       setMessage("Password reset email sent. Please check your inbox.");
     } catch (error: any) {
       console.error("Error resetting password:", error);
@@ -66,25 +71,49 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        if (name) {
-          await updateProfile(result.user, { displayName: name });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+              phone,
+              headline,
+              location,
+              nationality,
+              visaStatus,
+            }
+          }
+        });
+        if (error) throw error;
+        
+        if (data.user) {
+          // If email confirmation is required, data.session will be null
+          if (!data.session) {
+            setMessage("Registration successful! Please check your email to confirm your account.");
+          } else {
+            await getOrCreateUserProfile(data.user);
+          }
         }
-        await getOrCreateUserProfile(result.user);
       } else {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        await getOrCreateUserProfile(result.user);
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        
+        if (data.user) {
+          await getOrCreateUserProfile(data.user);
+        }
       }
     } catch (error: any) {
       console.error("Error with email auth:", error);
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.message.includes('already registered')) {
         setError("This email is already registered. Please sign in instead.");
-      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+      } else if (error.message.includes('Invalid login credentials')) {
         setError("Invalid email or password.");
-      } else if (error.code === 'auth/weak-password') {
+      } else if (error.message.includes('Password should be at least')) {
         setError("Password should be at least 6 characters.");
-      } else if (error.code === 'auth/operation-not-allowed') {
-        setError("Email/Password sign-in is not enabled. Please enable it in your Firebase Console under Authentication > Sign-in method.");
       } else {
         setError(error.message || "Authentication failed. Please try again.");
       }
@@ -163,20 +192,80 @@ export default function Auth() {
           <>
             <form onSubmit={handleEmailAuth} className="space-y-4">
               {isSignUp && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Full Name</label>
-                  <div className="relative">
-                    <User className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Full Name</label>
+                    <div className="relative">
+                      <User className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required={isSignUp}
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Phone Number</label>
                     <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required={isSignUp}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                      placeholder="John Doe"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      placeholder="+971 50 123 4567"
                     />
                   </div>
-                </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Headline</label>
+                    <input
+                      type="text"
+                      value={headline}
+                      onChange={(e) => setHeadline(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      placeholder="Software Engineer"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Location</label>
+                      <input
+                        type="text"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                        placeholder="Dubai, UAE"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Nationality</label>
+                      <input
+                        type="text"
+                        value={nationality}
+                        onChange={(e) => setNationality(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                        placeholder="Indian"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Visa Status</label>
+                    <select
+                      value={visaStatus}
+                      onChange={(e) => setVisaStatus(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    >
+                      <option value="">Select Status</option>
+                      <option value="employment">Employment Visa</option>
+                      <option value="visit">Visit Visa</option>
+                      <option value="freelance">Freelance Visa</option>
+                      <option value="golden">Golden Visa</option>
+                      <option value="dependent">Dependent Visa</option>
+                      <option value="none">No Visa / Outside UAE</option>
+                    </select>
+                  </div>
+                </>
               )}
 
               <div>

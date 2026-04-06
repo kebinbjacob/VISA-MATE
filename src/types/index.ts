@@ -111,6 +111,7 @@ export interface Document {
   type: string;
   size: string;
   url?: string;
+  storagePath?: string;
   isFolder: boolean;
   parentId?: string;
   createdAt: string;

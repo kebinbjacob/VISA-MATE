@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "./FirebaseProvider";
+import { useAuth } from "./AuthProvider";
 import { getOrCreateUserProfile } from "../services/userService";
 import { UserProfile } from "../types";
-import { db } from "../firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { supabase } from "../supabase";
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -45,14 +44,70 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     // First ensure profile exists
     getOrCreateUserProfile(user).catch(console.error);
 
-    // Then listen for real-time updates
-    const unsubscribe = onSnapshot(doc(db, "users", user.uid), (doc) => {
-      if (doc.exists()) {
-        setProfile({ id: doc.id, ...doc.data() } as UserProfile);
+    // Fetch initial profile
+    const fetchProfile = async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (data) {
+        setProfile({
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          subscriptionTier: data.subscription_tier,
+          cvData: data.cv_data,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at || data.created_at,
+          phone: data.phone || user.user_metadata?.phone,
+          photoUrl: data.photo_url || user.user_metadata?.photoUrl || user.user_metadata?.avatar_url,
+          headline: data.headline || user.user_metadata?.headline,
+          location: data.location || user.user_metadata?.location,
+          nationality: data.nationality || user.user_metadata?.nationality,
+          visaStatus: data.visa_status || user.user_metadata?.visaStatus,
+        } as UserProfile);
       }
-    });
+    };
+    fetchProfile();
 
-    return () => unsubscribe();
+    // Then listen for real-time updates
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          const data = payload.new as any;
+          setProfile({
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            role: data.role,
+            subscriptionTier: data.subscription_tier,
+            cvData: data.cv_data,
+            createdAt: data.created_at,
+            updatedAt: data.updated_at || data.created_at,
+            phone: data.phone || user.user_metadata?.phone,
+            photoUrl: data.photo_url || user.user_metadata?.photoUrl || user.user_metadata?.avatar_url,
+            headline: data.headline || user.user_metadata?.headline,
+            location: data.location || user.user_metadata?.location,
+            nationality: data.nationality || user.user_metadata?.nationality,
+            visaStatus: data.visa_status || user.user_metadata?.visaStatus,
+          } as UserProfile);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // Get current page title
@@ -167,8 +222,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <LogOut className="w-5 h-5" />
               </button>
-              <Link to="/dashboard/profile" className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 hover:ring-2 hover:ring-blue-500 transition-all ml-2" title={profile?.name || user?.displayName || user?.email || "User"}>
-                <img src={profile?.photoUrl || user?.photoURL || `https://api.dicebear.com/7.x/notionists/svg?seed=${user?.uid || 'Felix'}&backgroundColor=ffdfbf`} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              <Link to="/dashboard/profile" className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 hover:ring-2 hover:ring-blue-500 transition-all ml-2" title={profile?.name || user?.user_metadata?.full_name || user?.email || "User"}>
+                <img src={profile?.photoUrl || user?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/notionists/svg?seed=${user?.id || 'Felix'}&backgroundColor=ffdfbf`} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </Link>
             </div>
           </div>

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from './FirebaseProvider';
+import { useAuth } from './AuthProvider';
 import { getOrCreateUserProfile, updateUserProfile } from '../services/userService';
 import { UserProfile } from '../types';
-import { updateProfile } from 'firebase/auth';
 import { Camera, Save, Loader2, User as UserIcon } from 'lucide-react';
 
 export default function Profile() {
@@ -11,6 +10,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -50,11 +50,14 @@ export default function Profile() {
   const handleSave = async () => {
     if (!user || !profile) return;
     setSaving(true);
+    setMessage(null);
     try {
-      await updateUserProfile(user.uid, formData);
+      await updateUserProfile(user.id, formData);
       setProfile(prev => prev ? { ...prev, ...formData } : null);
-    } catch (error) {
+      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+    } catch (error: any) {
       console.error("Error saving profile:", error);
+      setMessage({ type: 'error', text: error.message || 'Failed to save profile. Make sure database columns exist.' });
     } finally {
       setSaving(false);
     }
@@ -101,10 +104,12 @@ export default function Profile() {
           const base64Url = canvas.toDataURL('image/jpeg', 0.8);
           
           try {
-            await updateUserProfile(user.uid, { photoUrl: base64Url });
+            await updateUserProfile(user.id, { photoUrl: base64Url });
             setProfile(prev => prev ? { ...prev, photoUrl: base64Url } : null);
-          } catch (err) {
+            setMessage({ type: 'success', text: 'Profile picture updated successfully!' });
+          } catch (err: any) {
             console.error("Error saving profile picture:", err);
+            setMessage({ type: 'error', text: err.message || 'Failed to save profile picture. Make sure database columns exist.' });
           } finally {
             setUploading(false);
           }
@@ -150,6 +155,14 @@ export default function Profile() {
         </button>
       </div>
 
+      {message && (
+        <div className={`p-4 rounded-xl text-sm font-medium ${
+          message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          {message.text}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Profile Card */}
         <div className="lg:col-span-1 space-y-6">
@@ -192,7 +205,7 @@ export default function Profile() {
                   <UserIcon className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">User ID (System ID)</p>
-                    <p className="text-xs font-mono text-gray-600 break-all">{user?.uid}</p>
+                    <p className="text-xs font-mono text-gray-600 break-all">{user?.id}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">

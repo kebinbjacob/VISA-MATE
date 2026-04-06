@@ -1,5 +1,4 @@
-import { db } from "../firebase";
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy } from "firebase/firestore";
+import { supabase } from "../supabase";
 import { Visa, VisaType, VisaStatus } from "../types";
 import { differenceInDays, parseISO } from "date-fns";
 
@@ -12,42 +11,77 @@ export interface VisaGuidance {
 }
 
 export async function getUserVisas(userId: string): Promise<Visa[]> {
-  const q = query(
-    collection(db, "visas"),
-    where("userId", "==", userId),
-    orderBy("expiryDate", "asc")
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
+  const { data, error } = await supabase
+    .from('visas')
+    .select('*')
+    .eq('user_id', userId)
+    .order('expiry_date', { ascending: true });
+
+  if (error) {
+    console.error("Error fetching visas:", error);
+    return [];
+  }
+
+  return data.map(visa => ({
+    id: visa.id,
+    userId: visa.user_id,
+    type: visa.type,
+    sponsor: visa.sponsor,
+    expiryDate: visa.expiry_date,
+    status: visa.status,
+    notes: visa.notes,
+    createdAt: visa.created_at,
+    updatedAt: visa.updated_at
   })) as Visa[];
 }
 
 export async function addVisa(userId: string, visaData: Omit<Visa, "id" | "userId" | "createdAt" | "updatedAt">) {
   const newVisa = {
-    ...visaData,
-    userId,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    user_id: userId,
+    type: visaData.type,
+    sponsor: visaData.sponsor,
+    expiry_date: visaData.expiryDate,
+    status: visaData.status,
+    notes: visaData.notes
   };
   
-  const docRef = await addDoc(collection(db, "visas"), newVisa);
-  return docRef.id;
+  const { data, error } = await supabase
+    .from('visas')
+    .insert([newVisa])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data.id;
 }
 
 export async function updateVisa(visaId: string, userId: string, updates: Partial<Visa>) {
-  const visaRef = doc(db, "visas", visaId);
-  await updateDoc(visaRef, {
-    ...updates,
-    userId, // Ensure userId is passed for security rules
-    updatedAt: serverTimestamp(),
-  });
+  const updateData: any = {
+    updated_at: new Date().toISOString()
+  };
+  
+  if (updates.type) updateData.type = updates.type;
+  if (updates.sponsor) updateData.sponsor = updates.sponsor;
+  if (updates.expiryDate) updateData.expiry_date = updates.expiryDate;
+  if (updates.status) updateData.status = updates.status;
+  if (updates.notes !== undefined) updateData.notes = updates.notes;
+
+  const { error } = await supabase
+    .from('visas')
+    .update(updateData)
+    .eq('id', visaId)
+    .eq('user_id', userId); // Extra safety check
+
+  if (error) throw error;
 }
 
 export async function deleteVisa(visaId: string) {
-  await deleteDoc(doc(db, "visas", visaId));
+  const { error } = await supabase
+    .from('visas')
+    .delete()
+    .eq('id', visaId);
+
+  if (error) throw error;
 }
 
 export function getVisaGuidance(visa: Visa): VisaGuidance {

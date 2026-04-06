@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useAuth } from "./FirebaseProvider";
+import { useAuth } from "./AuthProvider";
 import { getUserVisas, addVisa, getVisaGuidance, getVisaStatusColor } from "../services/visaService";
 import { Visa, VisaType, VisaStatus } from "../types";
 import { differenceInDays, parseISO } from "date-fns";
@@ -13,7 +13,7 @@ export default function VisaDashboard() {
 
   const loadVisas = async () => {
     try {
-      const data = await getUserVisas(user!.uid);
+      const data = await getUserVisas(user!.id);
       setVisas(data);
     } catch (error) {
       console.error("Failed to load visas:", error);
@@ -33,7 +33,7 @@ export default function VisaDashboard() {
     const formData = new FormData(e.currentTarget);
     
     try {
-      await addVisa(user!.uid, {
+      await addVisa(user!.id, {
         type: formData.get("type") as VisaType,
         sponsor: formData.get("sponsor") as string,
         expiryDate: new Date(formData.get("expiryDate") as string).toISOString(),

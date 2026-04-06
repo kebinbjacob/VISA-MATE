@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { AlertTriangle, UploadCloud, Zap, ShieldAlert, FileText, MessageSquare, HelpCircle, Share2, FileWarning, AlertOctagon, Info, CheckCircle2 } from "lucide-react";
-import { useAuth } from "./FirebaseProvider";
+import { useAuth } from "./AuthProvider";
 import { addScamReport, getUserScamReports, ScamReport } from "../services/scamService";
 import { formatDate } from "../lib/utils";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -22,7 +22,7 @@ export default function ScamDetector() {
   const loadHistory = async () => {
     if (!user) return;
     try {
-      const reports = await getUserScamReports(user.uid);
+      const reports = await getUserScamReports(user.id);
       setHistory(reports);
     } catch (error) {
       console.error("Failed to load scam reports:", error);
@@ -107,7 +107,7 @@ export default function ScamDetector() {
         else if (finalScore > 30) verdict = 'suspicious';
 
         try {
-          await addScamReport(user.uid, {
+          await addScamReport(user.id, {
             content: text.substring(0, 5000),
             sourceType: "text",
             riskScore: finalScore / 100,

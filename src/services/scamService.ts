@@ -1,5 +1,4 @@
-import { db } from "../firebase";
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from "firebase/firestore";
+import { supabase } from "../supabase";
 
 export interface ScamReport {
   id?: string;
@@ -14,26 +13,47 @@ export interface ScamReport {
 }
 
 export async function getUserScamReports(userId: string): Promise<ScamReport[]> {
-  const q = query(
-    collection(db, "scam_reports"),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
+  const { data, error } = await supabase
+    .from('scam_reports')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Error fetching scam reports:", error);
+    return [];
+  }
+
+  return data.map(report => ({
+    id: report.id,
+    userId: report.user_id,
+    content: report.content,
+    sourceType: report.source_type,
+    riskScore: report.risk_score,
+    verdict: report.verdict,
+    aiReasoning: report.ai_reasoning,
+    communityFlags: report.community_flags,
+    createdAt: report.created_at
   })) as ScamReport[];
 }
 
 export async function addScamReport(userId: string, reportData: Omit<ScamReport, "id" | "userId" | "createdAt">) {
   const newReport = {
-    ...reportData,
-    userId,
-    createdAt: serverTimestamp(),
+    user_id: userId,
+    content: reportData.content,
+    source_type: reportData.sourceType,
+    risk_score: reportData.riskScore,
+    verdict: reportData.verdict,
+    ai_reasoning: reportData.aiReasoning,
+    community_flags: reportData.communityFlags
   };
   
-  const docRef = await addDoc(collection(db, "scam_reports"), newReport);
-  return docRef.id;
+  const { data, error } = await supabase
+    .from('scam_reports')
+    .insert([newReport])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data.id;
 }

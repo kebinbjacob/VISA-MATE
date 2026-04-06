@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import Auth from "./components/Auth";
-import { useAuth } from "./components/FirebaseProvider";
+import { useAuth } from "./components/AuthProvider";
 import { FileText, ShieldAlert } from "lucide-react";
 
 import Dashboard from "./components/Dashboard";

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { FolderOpen, FileText, UploadCloud, MoreVertical, Search, Filter, ShieldCheck, Clock, FileImage, File, Trash2 } from "lucide-react";
-import { useAuth } from "./FirebaseProvider";
-import { getUserDocuments, addDocument, deleteDocument } from "../services/documentService";
+import { FolderOpen, FileText, UploadCloud, MoreVertical, Search, Filter, ShieldCheck, Clock, FileImage, File, Trash2, Eye, Download, ShieldAlert } from "lucide-react";
+import { useAuth } from "./AuthProvider";
+import { getUserDocuments, addDocument, deleteDocument, uploadDocumentFile } from "../services/documentService";
 import { Document } from "../types";
 import { formatDate } from "../lib/utils";
 
@@ -16,6 +16,7 @@ type VaultFile = {
   icon: any;
   color: string;
   bg: string;
+  url?: string;
 };
 
 export default function DocumentVault() {
@@ -25,6 +26,11 @@ export default function DocumentVault() {
   const [searchQuery, setSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [uploading, setUploading] = useState(false);
+  const [storageError, setStorageError] = useState(false);
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+
   useEffect(() => {
     if (user) {
       loadDocuments();
@@ -33,16 +39,16 @@ export default function DocumentVault() {
 
   const loadDocuments = async () => {
     try {
-      const docs = await getUserDocuments(user!.uid);
+      const docs = await getUserDocuments(user!.id);
       const mappedFiles = docs.map(doc => {
         const ext = doc.type;
         let icon = File;
         let color = 'text-blue-600';
         let bg = 'bg-blue-50';
         
-        if (ext === 'PDF') { icon = FileText; color = 'text-red-600'; bg = 'bg-red-50'; }
+        if (doc.isFolder) { icon = FolderOpen; color = 'text-blue-600'; bg = 'bg-blue-50'; }
+        else if (ext === 'PDF') { icon = FileText; color = 'text-red-600'; bg = 'bg-red-50'; }
         else if (['JPG', 'PNG', 'JPEG'].includes(ext)) { icon = FileImage; color = 'text-emerald-600'; bg = 'bg-emerald-50'; }
-        else if (doc.isFolder) { icon = FolderOpen; color = 'text-blue-600'; bg = 'bg-blue-50'; }
 
         return {
           id: doc.id,
@@ -51,6 +57,7 @@ export default function DocumentVault() {
           size: doc.size,
           updatedAt: formatDate(doc.createdAt),
           isFolder: doc.isFolder,
+          url: doc.url,
           icon, color, bg
         };
       });
@@ -68,17 +75,63 @@ export default function DocumentVault() {
       const ext = uploadedFile.name.split('.').pop()?.toUpperCase() || 'FILE';
       const sizeStr = (uploadedFile.size / (1024 * 1024)).toFixed(1) + ' MB';
       
+      setUploading(true);
       try {
-        await addDocument(user.uid, {
-          name: uploadedFile.name,
-          type: ext,
-          size: sizeStr,
-          isFolder: false,
-        });
+        let uploadResult;
+        try {
+          uploadResult = await uploadDocumentFile(user.id, uploadedFile);
+        } catch (storageErr: any) {
+          console.error("Storage upload error:", storageErr);
+          throw new Error(`Storage Error: ${storageErr.message || 'Failed to upload file to storage bucket. Check Storage RLS policies.'}`);
+        }
+
+        try {
+          await addDocument(user.id, {
+            name: uploadedFile.name,
+            type: ext,
+            size: sizeStr,
+            isFolder: false,
+            url: uploadResult.url,
+            storagePath: uploadResult.storagePath,
+          });
+        } catch (dbErr: any) {
+          console.error("Database insert error:", dbErr);
+          throw new Error(`Database Error: ${dbErr.message || 'Failed to save document record. Check Database RLS policies.'}`);
+        }
+        
         loadDocuments();
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to upload document:", error);
+        if (error.code === 'storage/retry-limit-exceeded' || error.message?.includes('retry-limit-exceeded')) {
+          setStorageError(true);
+        } else {
+          alert(error.message + "\n\nPlease run the provided SQL in your Supabase SQL Editor to fix this.");
+        }
+      } finally {
+        setUploading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!user || !newFolderName || newFolderName.trim() === "") return;
+
+    try {
+      await addDocument(user.id, {
+        name: newFolderName.trim(),
+        type: "FOLDER",
+        size: "0 KB",
+        isFolder: true,
+      });
+      setNewFolderName("");
+      setIsCreateFolderModalOpen(false);
+      loadDocuments();
+    } catch (error) {
+      console.error("Failed to create folder:", error);
+      // Fallback error handling, ideally use a toast notification
     }
   };
 
@@ -89,6 +142,29 @@ export default function DocumentVault() {
       setFiles(files.filter(f => f.id !== id));
     } catch (error) {
       console.error("Failed to delete document:", error);
+    }
+  };
+
+  const handleViewFile = (file: VaultFile, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (file.url) {
+      window.open(file.url, '_blank');
+    } else {
+      alert(`Viewing ${file.name} is not supported in this demo.`);
+    }
+  };
+
+  const handleDownloadFile = (file: VaultFile, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (file.url) {
+      const a = document.createElement('a');
+      a.href = file.url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      alert(`Downloading ${file.name} is not supported in this demo.`);
     }
   };
 
@@ -107,9 +183,11 @@ export default function DocumentVault() {
         
         <button 
           onClick={() => fileInputRef.current?.click()}
-          className="bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 py-3 rounded-xl transition-colors shadow-sm flex items-center gap-2 shrink-0"
+          disabled={uploading}
+          className="bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 py-3 rounded-xl transition-colors shadow-sm flex items-center gap-2 shrink-0 disabled:opacity-50"
         >
-          <UploadCloud className="w-5 h-5" /> Upload Document
+          <UploadCloud className={`w-5 h-5 ${uploading ? 'animate-bounce' : ''}`} /> 
+          {uploading ? 'Uploading...' : 'Upload Document'}
         </button>
         <input 
           type="file" 
@@ -118,6 +196,30 @@ export default function DocumentVault() {
           onChange={handleFileUpload}
         />
       </div>
+
+      {storageError && (
+        <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4">
+          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0 text-red-600">
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-red-800 font-bold text-lg mb-1">Supabase Storage Not Configured</h3>
+            <p className="text-red-700 text-sm mb-3">
+              We couldn't upload your document because the Supabase Storage bucket is not configured or accessible.
+            </p>
+            <ol className="list-decimal list-inside text-sm text-red-700 space-y-1 mb-4">
+              <li>Ensure you have created a storage bucket named <strong>documents</strong> in your Supabase project.</li>
+              <li>Check that the bucket is set to public or has the correct RLS policies for authenticated users.</li>
+            </ol>
+            <button 
+              onClick={() => setStorageError(false)}
+              className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg text-sm hover:bg-red-200 transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stats & Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
@@ -159,7 +261,10 @@ export default function DocumentVault() {
           </div>
         </div>
 
-        <div className="bg-gray-50 rounded-3xl p-6 border border-gray-200 border-dashed flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-100 transition-colors">
+        <div 
+          onClick={() => setIsCreateFolderModalOpen(true)}
+          className="bg-gray-50 rounded-3xl p-6 border border-gray-200 border-dashed flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-100 transition-colors"
+        >
           <span className="text-sm font-bold text-gray-600">+ Create Folder</span>
         </div>
       </div>
@@ -206,7 +311,17 @@ export default function DocumentVault() {
                     <file.icon className={`w-6 h-6 ${file.isFolder ? 'fill-blue-100' : ''}`} />
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => handleDeleteFile(file.id, e)} className="p-1 text-gray-400 hover:text-red-600 rounded">
+                    {!file.isFolder && (
+                      <>
+                        <button onClick={(e) => handleViewFile(file, e)} className="p-1 text-gray-400 hover:text-blue-600 rounded" title="View">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button onClick={(e) => handleDownloadFile(file, e)} className="p-1 text-gray-400 hover:text-emerald-600 rounded" title="Download">
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    <button onClick={(e) => handleDeleteFile(file.id, e)} className="p-1 text-gray-400 hover:text-red-600 rounded" title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>
                     <button className="p-1 text-gray-400 hover:text-gray-900 rounded">
@@ -223,6 +338,41 @@ export default function DocumentVault() {
           )}
         </div>
       </div>
+
+      {/* Create Folder Modal */}
+      {isCreateFolderModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Create New Folder</h2>
+            <input
+              type="text"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              placeholder="Folder Name"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setIsCreateFolderModalOpen(false);
+                  setNewFolderName("");
+                }}
+                className="px-4 py-2 text-gray-600 font-semibold hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateFolder}
+                disabled={!newFolderName.trim()}
+                className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
