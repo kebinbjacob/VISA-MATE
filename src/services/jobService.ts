@@ -16,7 +16,7 @@ export async function fetchJobs(filters?: {
     const location = filters?.location || "UAE";
     
     // @ts-ignore
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+    const apiKey = process.env.GEMINI_API_KEY;
     
     console.log("Job Service - API Key loaded:", !!apiKey);
     
@@ -54,11 +54,10 @@ export async function fetchJobs(filters?: {
     - companyCulture: (Optional) array of strings describing the company culture.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: searchPrompt,
       config: {
         tools: [{ googleSearch: {} }],
-        toolConfig: { includeServerSideToolInvocations: true },
         temperature: 0.1,
       }
     });

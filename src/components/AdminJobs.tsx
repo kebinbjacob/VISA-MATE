@@ -1,0 +1,451 @@
+import React, { useState, useEffect } from "react";
+import { supabase } from "../supabase";
+import { Job, JobType, ExperienceLevel } from "../types";
+import { Plus, Search, Edit2, Trash2, UploadCloud, Loader2, Image as ImageIcon, CheckCircle } from "lucide-react";
+import { GoogleGenAI } from "@google/genai";
+
+export default function AdminJobs() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanSuccess, setScanSuccess] = useState(false);
+  
+  const [formData, setFormData] = useState<Partial<Job>>({
+    title: "",
+    company: "",
+    location: "",
+    description: "",
+    jobType: "full_time",
+    experienceLevel: "mid",
+    sourceUrl: "",
+    source: "manual",
+    isActive: true,
+  });
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .order('posted_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      // Map snake_case to camelCase
+      const mappedJobs = (data || []).map(job => ({
+        id: job.id,
+        externalId: job.external_id,
+        source: job.source,
+        sourceUrl: job.source_url,
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        description: job.description,
+        salaryMin: job.salary_min,
+        salaryMax: job.salary_max,
+        currency: job.currency,
+        jobType: job.job_type,
+        experienceLevel: job.experience_level,
+        skills: job.skills || [],
+        postedAt: job.posted_at,
+        expiresAt: job.expires_at,
+        isVerified: job.is_verified,
+        isActive: job.is_active,
+        isRemote: job.is_remote,
+        companyCulture: job.company_culture || [],
+      }));
+      
+      setJobs(mappedJobs);
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    setScanSuccess(false);
+    
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = (reader.result as string).split(',')[1];
+        const mimeType = file.type;
+
+        // @ts-ignore
+        const apiKey = process.env.GEMINI_API_KEY;
+        const ai = new GoogleGenAI({ apiKey });
+
+        const prompt = `Analyze this job posting image and extract the details into a strict JSON object with the following keys:
+        - title (string)
+        - company (string)
+        - location (string)
+        - description (string, summarize in 2-3 sentences)
+        - jobType (string, one of: "full_time", "part_time", "contract", "freelance")
+        - experienceLevel (string, one of: "entry", "mid", "senior", "manager")
+        - salaryMin (number or null, extract numbers only)
+        - salaryMax (number or null, extract numbers only)
+        - skills (array of strings)
+        
+        Return ONLY the raw JSON object. No markdown formatting, no backticks.`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [
+            prompt,
+            { inlineData: { data: base64String, mimeType } }
+          ]
+        });
+
+        let text = response.text || "{}";
+        if (text.includes("\`\`\`json")) {
+          text = text.split("\`\`\`json")[1].split("\`\`\`")[0].trim();
+        } else if (text.includes("\`\`\`")) {
+          text = text.split("\`\`\`")[1].split("\`\`\`")[0].trim();
+        }
+
+        const extractedData = JSON.parse(text);
+        
+        setFormData(prev => ({
+          ...prev,
+          title: extractedData.title || prev.title,
+          company: extractedData.company || prev.company,
+          location: extractedData.location || prev.location,
+          description: extractedData.description || prev.description,
+          jobType: extractedData.jobType || prev.jobType,
+          experienceLevel: extractedData.experienceLevel || prev.experienceLevel,
+          salaryMin: extractedData.salaryMin || prev.salaryMin,
+          salaryMax: extractedData.salaryMax || prev.salaryMax,
+          skills: extractedData.skills || prev.skills,
+        }));
+        
+        setScanSuccess(true);
+        setTimeout(() => setScanSuccess(false), 3000);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error scanning image:", error);
+      alert("Failed to scan image. Please try again or enter details manually.");
+    } finally {
+      setIsScanning(false);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
+
+  const handleSaveJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const jobData = {
+        external_id: `manual-${Date.now()}`,
+        title: formData.title,
+        company: formData.company,
+        location: formData.location,
+        description: formData.description,
+        job_type: formData.jobType,
+        experience_level: formData.experienceLevel,
+        source_url: formData.sourceUrl || '#',
+        source: formData.source || 'manual',
+        salary_min: formData.salaryMin,
+        salary_max: formData.salaryMax,
+        currency: 'AED',
+        skills: formData.skills || [],
+        is_active: formData.isActive,
+        is_verified: true,
+        posted_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('jobs')
+        .insert([jobData]);
+
+      if (error) throw error;
+
+      alert("Job saved successfully!");
+      setIsModalOpen(false);
+      setFormData({
+        title: "",
+        company: "",
+        location: "",
+        description: "",
+        jobType: "full_time",
+        experienceLevel: "mid",
+        sourceUrl: "",
+        source: "manual",
+        isActive: true,
+      });
+      
+      // Refresh the jobs list
+      fetchJobs();
+    } catch (error: any) {
+      console.error("Error saving job:", error);
+      alert(`Failed to save job: ${error.message}`);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Job Postings</h1>
+          <p className="text-gray-500 text-sm">Manage job listings and use AI to scan new postings.</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+          Add Job
+        </button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="p-4 border-b border-gray-200 flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-5 h-5 absolute left-3 top-2.5 text-gray-400" />
+            <input 
+              type="text"
+              placeholder="Search jobs..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200 text-sm text-gray-500">
+                <th className="p-4 font-medium">Job Title</th>
+                <th className="p-4 font-medium">Company</th>
+                <th className="p-4 font-medium">Location</th>
+                <th className="p-4 font-medium">Type</th>
+                <th className="p-4 font-medium">Status</th>
+                <th className="p-4 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-gray-500">Loading jobs...</td>
+                </tr>
+              ) : jobs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-gray-500">No jobs found. Add one to get started.</td>
+                </tr>
+              ) : (
+                jobs.map((job) => (
+                  <tr key={job.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4 font-medium text-gray-900">{job.title}</td>
+                    <td className="p-4 text-gray-600">{job.company}</td>
+                    <td className="p-4 text-gray-600">{job.location}</td>
+                    <td className="p-4 text-gray-600 capitalize">{job.jobType.replace('_', ' ')}</td>
+                    <td className="p-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${job.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {job.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="p-4 flex justify-end gap-2">
+                      <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Add Job Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-3xl w-full shadow-xl my-8">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white rounded-t-2xl z-10">
+              <h2 className="text-xl font-bold text-gray-900">Add New Job</h2>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {/* AI Scanner Section */}
+              <div className="mb-8 p-6 bg-blue-50 border border-blue-100 rounded-2xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
+                    <ImageIcon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-blue-900 mb-1">AI Job Scanner</h3>
+                    <p className="text-sm text-blue-700 mb-4">
+                      Upload a screenshot of a job posting. Our AI will automatically extract the details and fill the form below.
+                    </p>
+                    
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={isScanning}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                      />
+                      <div className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-dashed transition-colors ${isScanning ? 'border-blue-300 bg-blue-100/50' : scanSuccess ? 'border-green-400 bg-green-50 text-green-700' : 'border-blue-300 bg-white text-blue-600 hover:bg-blue-50'}`}>
+                        {isScanning ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span className="font-medium">Scanning image...</span>
+                          </>
+                        ) : scanSuccess ? (
+                          <>
+                            <CheckCircle className="w-5 h-5" />
+                            <span className="font-medium">Data extracted successfully!</span>
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="w-5 h-5" />
+                            <span className="font-medium">Upload Screenshot</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveJob} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={formData.title}
+                      onChange={e => setFormData({...formData, title: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={formData.company}
+                      onChange={e => setFormData({...formData, company: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={formData.location}
+                      onChange={e => setFormData({...formData, location: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Source URL</label>
+                    <input 
+                      type="url" 
+                      value={formData.sourceUrl}
+                      onChange={e => setFormData({...formData, sourceUrl: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
+                    <select 
+                      value={formData.jobType}
+                      onChange={e => setFormData({...formData, jobType: e.target.value as JobType})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                      <option value="full_time">Full Time</option>
+                      <option value="part_time">Part Time</option>
+                      <option value="contract">Contract</option>
+                      <option value="freelance">Freelance</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Experience Level</label>
+                    <select 
+                      value={formData.experienceLevel}
+                      onChange={e => setFormData({...formData, experienceLevel: e.target.value as ExperienceLevel})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                      <option value="entry">Entry Level</option>
+                      <option value="mid">Mid Level</option>
+                      <option value="senior">Senior Level</option>
+                      <option value="manager">Manager/Director</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Min Salary (AED)</label>
+                    <input 
+                      type="number" 
+                      value={formData.salaryMin || ''}
+                      onChange={e => setFormData({...formData, salaryMin: parseInt(e.target.value) || undefined})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Salary (AED)</label>
+                    <input 
+                      type="number" 
+                      value={formData.salaryMax || ''}
+                      onChange={e => setFormData({...formData, salaryMax: parseInt(e.target.value) || undefined})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                  <textarea 
+                    required
+                    rows={4}
+                    value={formData.description}
+                    onChange={e => setFormData({...formData, description: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-y"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                  <button 
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Save Job
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

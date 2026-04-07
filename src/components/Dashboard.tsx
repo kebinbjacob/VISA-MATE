@@ -8,6 +8,7 @@ import { fetchJobs } from "../services/jobService";
 import { getUserCVReports } from "../services/cvService";
 import { Visa, Application, Document, Job } from "../types";
 import { differenceInDays, parseISO } from "date-fns";
+import { supabase } from "../supabase";
 import { 
   ArrowRight, 
   RefreshCw, 
@@ -20,7 +21,8 @@ import {
   CheckSquare,
   Square,
   Globe,
-  FileText
+  FileText,
+  Megaphone
 } from "lucide-react";
 import { formatCurrency, formatDate } from "../lib/utils";
 
@@ -30,19 +32,31 @@ export default function Dashboard() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [recommendedJobs, setRecommendedJobs] = useState<Job[]>([]);
+  const [announcement, setAnnouncement] = useState<{title: string, body: string} | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
+      const fetchAnnouncement = supabase
+        .from('content')
+        .select('title, body')
+        .eq('key', 'homepage_announcement')
+        .eq('is_active', true)
+        .single()
+        .then(({ data }) => data)
+        .catch(() => null);
+
       Promise.all([
         getUserVisas(user.id),
         getUserApplications(user.id),
         getUserDocuments(user.id),
-        getUserCVReports(user.id)
-      ]).then(async ([v, a, d, cvs]) => {
+        getUserCVReports(user.id),
+        fetchAnnouncement
+      ]).then(async ([v, a, d, cvs, ann]) => {
         setVisas(v);
         setApplications(a);
         setDocuments(d);
+        setAnnouncement(ann);
         
         let searchQuery = "developer";
         if (cvs && cvs.length > 0 && cvs[0].keywordsToAdd && cvs[0].keywordsToAdd.length > 0) {
@@ -100,6 +114,21 @@ export default function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto space-y-10 pb-12">
       
+      {/* Dynamic Announcement Banner */}
+      {announcement && (
+        <div className="bg-blue-50 border border-blue-200 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row gap-6 items-start shadow-sm">
+          <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center shrink-0 text-blue-600 shadow-sm">
+            <Megaphone className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-blue-900 font-bold text-xl mb-2">{announcement.title}</h3>
+            <div className="text-blue-800 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+              {announcement.body}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Section: Visa Status & Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         

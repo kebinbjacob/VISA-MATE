@@ -85,7 +85,7 @@ export async function enhanceSummary(summary: string, headline: string): Promise
     Return ONLY the enhanced summary text. No explanations or conversational text.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         temperature: 0.7,
@@ -117,7 +117,7 @@ export async function extractCVData(fileBase64: string, mimeType: string): Promi
     If a field is not found, leave it empty or omit it.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: [
         {
           inlineData: {
@@ -214,7 +214,7 @@ export async function enhanceExperienceDescription(description: string, position
     Return ONLY the enhanced description text. No explanations or conversational text.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         temperature: 0.7,

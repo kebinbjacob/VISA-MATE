@@ -15,6 +15,12 @@ import DocumentVault from "./components/DocumentVault";
 import Profile from "./components/Profile";
 import CVBuilder from "./components/CVBuilder";
 
+import AdminLayout from "./components/AdminLayout";
+import AdminDashboard from "./components/AdminDashboard";
+import AdminJobs from "./components/AdminJobs";
+import AdminContent from "./components/AdminContent";
+import AdminUsers from "./components/AdminUsers";
+
 const Billing = () => <h1 className="text-2xl font-bold">Subscription & Billing</h1>;
 
 export default function App() {
@@ -54,6 +60,14 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+        <Route path="/admin/jobs" element={<AdminLayout><AdminJobs /></AdminLayout>} />
+        <Route path="/admin/content" element={<AdminLayout><AdminContent /></AdminLayout>} />
+        <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+
+        {/* User Routes */}
         <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
         <Route path="/dashboard/visa" element={<Layout><VisaDashboard /></Layout>} />
         <Route path="/dashboard/jobs" element={<Layout><Jobs /></Layout>} />

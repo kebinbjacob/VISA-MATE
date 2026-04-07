@@ -112,6 +112,20 @@ CREATE POLICY "Users can view their own profile" ON public.users FOR SELECT USIN
 CREATE POLICY "Users can insert their own profile" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
 
+-- Super Admins can view and manage all users
+CREATE POLICY "Super Admins can view all users" ON public.users FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'super_admin')
+);
+CREATE POLICY "Super Admins can update all users" ON public.users FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'super_admin')
+);
+CREATE POLICY "Super Admins can insert users" ON public.users FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'super_admin')
+);
+CREATE POLICY "Super Admins can delete users" ON public.users FOR DELETE USING (
+  EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'super_admin')
+);
+
 -- Users can only manage their own documents
 CREATE POLICY "Users can view their own documents" ON public.documents FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own documents" ON public.documents FOR INSERT WITH CHECK (auth.uid() = user_id);

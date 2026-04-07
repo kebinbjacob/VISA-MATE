@@ -35,14 +35,14 @@ export default function ScamDetector() {
     
     try {
       // @ts-ignore
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined);
+      const apiKey = process.env.GEMINI_API_KEY;
       
       console.log("Scam Detector - API Key loaded:", !!apiKey);
       
       const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: `Analyze the following job offer or communication for potential scam or fraud indicators, specifically in the context of UAE employment. 
         
         Text to analyze:

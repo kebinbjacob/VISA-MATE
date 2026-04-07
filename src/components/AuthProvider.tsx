@@ -22,13 +22,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        if (error.message.includes("Refresh Token Not Found") || error.message.includes("Invalid Refresh Token")) {
+          console.warn("Session expired or invalid refresh token. User will be signed out.");
+        } else {
+          console.error("Error getting session:", error);
+        }
+        // Clear local storage to remove invalid tokens
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-')) {
+            localStorage.removeItem(key);
+          }
+        });
+        // If there's an error with the session (like invalid refresh token), sign out
+        supabase.auth.signOut().catch(() => {
+          // Ignore sign out errors if we're already in an error state
+        });
+      }
       setUser(session?.user ?? null);
+      setLoading(false);
+    }).catch(error => {
+      if (error?.message?.includes("Refresh Token Not Found") || error?.message?.includes("Invalid Refresh Token")) {
+        console.warn("Session expired or invalid refresh token. User will be signed out.");
+      } else {
+        console.error("Exception getting session:", error);
+      }
+      // Clear local storage to remove invalid tokens
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed successfully');
+      }
+      
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -41,6 +75,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
     } catch (error) {
       console.error("Error signing out:", error);
+      // Force clear local storage if sign out fails
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      setUser(null);
     }
   };
 

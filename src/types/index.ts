@@ -100,6 +100,7 @@ export interface UserProfile {
   github?: string;
   cvData?: CVData;
   subscriptionTier: "free" | "premium";
+  role?: "super_admin" | "admin" | "publisher" | "editor" | "user";
   createdAt: string;
   updatedAt: string;
 }
