@@ -37,12 +37,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      const fetchAnnouncement = supabase
+      const fetchAnnouncement = Promise.resolve(supabase
         .from('content')
         .select('title, body')
         .eq('key', 'homepage_announcement')
         .eq('is_active', true)
-        .single()
+        .single())
         .then(({ data }) => data)
         .catch(() => null);
 

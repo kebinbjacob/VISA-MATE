@@ -24,7 +24,7 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
 
 const COLUMNS: ApplicationStatus[] = ['saved', 'applied', 'interview', 'offer', 'rejected'];
 
-function JobCard({ app, onDelete }: { app: Application & { job?: Job }, onDelete: (id: string) => void }) {
+function JobCard({ app, onDelete }: { key?: string | number, app: Application & { job?: Job }, onDelete: (id: string) => void | Promise<void> }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: app.id,
     data: { status: app.status }
@@ -90,7 +90,7 @@ function JobCard({ app, onDelete }: { app: Application & { job?: Job }, onDelete
   );
 }
 
-function KanbanColumn({ status, title, applications, onDelete }: { status: ApplicationStatus, title: string, applications: (Application & { job?: Job })[], onDelete: (id: string) => void }) {
+function KanbanColumn({ status, title, applications, onDelete }: { key?: string | number, status: ApplicationStatus, title: string, applications: (Application & { job?: Job })[], onDelete: (id: string) => void | Promise<void> }) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
   });

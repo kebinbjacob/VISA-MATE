@@ -54,7 +54,7 @@ export async function fetchJobs(filters?: {
     - companyCulture: (Optional) array of strings describing the company culture.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: searchPrompt,
       config: {
         tools: [{ googleSearch: {} }],

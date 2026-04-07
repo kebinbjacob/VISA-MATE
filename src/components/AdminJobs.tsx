@@ -99,7 +99,7 @@ export default function AdminJobs() {
         Return ONLY the raw JSON object. No markdown formatting, no backticks.`;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3-flash-preview',
           contents: [
             prompt,
             { inlineData: { data: base64String, mimeType } }
