@@ -134,7 +134,8 @@ export async function searchJobsWithAI(filters?: {
     - salaryMin: (Optional) minimum salary in AED (number only).
     - salaryMax: (Optional) maximum salary in AED (number only).
     - isRemote: (Optional) boolean indicating if the job is remote.
-    - companyCulture: (Optional) array of strings describing the company culture.`;
+    - companyCulture: (Optional) array of strings describing the company culture.
+    - contactEmail: (Optional) string containing the HR or application email address if available.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -213,6 +214,7 @@ export async function searchJobsWithAI(filters?: {
         salaryMax: raw.salaryMax,
         isRemote: raw.isRemote,
         companyCulture: raw.companyCulture || [],
+        contactEmail: raw.contactEmail,
         skills: [],
         postedAt: new Date().toISOString(),
         isVerified: true,

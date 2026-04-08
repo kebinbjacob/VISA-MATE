@@ -104,6 +104,7 @@ export default function AdminJobs() {
         - salaryMin (number or null, extract numbers only)
         - salaryMax (number or null, extract numbers only)
         - skills (array of strings)
+        - contactEmail (string or null, extract email address if present)
         
         Return ONLY the raw JSON object. No markdown formatting, no backticks.`;
 
@@ -135,6 +136,7 @@ export default function AdminJobs() {
           salaryMin: extractedData.salaryMin || prev.salaryMin,
           salaryMax: extractedData.salaryMax || prev.salaryMax,
           skills: extractedData.skills || prev.skills,
+          contactEmail: extractedData.contactEmail || prev.contactEmail,
         }));
         
         setScanSuccess(true);
