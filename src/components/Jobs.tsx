@@ -20,7 +20,7 @@ export default function Jobs() {
     isRemote: false,
     companyCulture: [] as string[],
     salaryMin: 0,
-    salaryMax: 100000,
+    salaryMax: 0,
   });
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export default function Jobs() {
               <h3 className="font-bold text-sm tracking-widest uppercase text-gray-900">Filters</h3>
               <button 
                 onClick={() => {
-                  setFilters({ q: "", location: "", jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 100000 });
+                  setFilters({ q: "", location: "", jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 0 });
                   setSelectedIndustries([]);
                 }}
                 className="text-xs font-bold text-blue-600 hover:text-blue-700"
@@ -353,7 +353,7 @@ export default function Jobs() {
                 <p>No jobs found matching your criteria.</p>
                 <button 
                   onClick={() => {
-                    setFilters({ q: "", location: "", jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 100000 });
+                    setFilters({ q: "", location: "", jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 0 });
                     setSelectedIndustries([]);
                   }}
                   className="mt-4 text-blue-600 font-bold hover:underline"

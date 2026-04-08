@@ -28,11 +28,11 @@ export async function fetchJobs(filters?: {
     if (filters?.isRemote) {
       query = query.eq('is_remote', true);
     }
-    if (filters?.salaryMin) {
-      query = query.gte('salary_max', filters.salaryMin);
+    if (filters?.salaryMin && filters.salaryMin > 0) {
+      query = query.or(`salary_max.gte.${filters.salaryMin},salary_max.is.null`);
     }
-    if (filters?.salaryMax) {
-      query = query.lte('salary_min', filters.salaryMax);
+    if (filters?.salaryMax && filters.salaryMax > 0) {
+      query = query.or(`salary_min.lte.${filters.salaryMax},salary_min.is.null`);
     }
 
     const { data, error } = await query;
