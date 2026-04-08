@@ -9,6 +9,17 @@ export async function getOrCreateUserProfile(user: User): Promise<UserProfile> {
     .eq('id', user.id)
     .single();
 
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    // PGRST116 means "no rows returned" which is expected for new users.
+    // Any other error (like infinite recursion) should be thrown.
+    console.error("Error fetching user profile:", fetchError);
+    if (fetchError.message?.includes('recursion')) {
+      throw new Error("RLS_RECURSION_ERROR");
+    }
+    // We might still want to proceed if it's some other weird error, but throwing is safer
+    // to prevent primary key violations on insert.
+  }
+
   if (existingUser) {
     return {
       id: existingUser.id,

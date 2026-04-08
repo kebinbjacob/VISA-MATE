@@ -12,6 +12,7 @@ export default function AdminUsers() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -38,6 +39,7 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     try {
+      setErrorMsg(null);
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -56,8 +58,9 @@ export default function AdminUsers() {
       })) as UserProfile[];
       
       setUsers(mappedUsers);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching users:", error);
+      setErrorMsg(error.message || "Failed to fetch users");
     } finally {
       setLoading(false);
     }
@@ -73,9 +76,9 @@ export default function AdminUsers() {
       if (error) throw error;
       
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole as any } : u));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating role:", error);
-      alert("Failed to update user role.");
+      alert(`Failed to update user role: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -187,6 +190,41 @@ export default function AdminUsers() {
               {loading ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-gray-500">Loading users...</td>
+                </tr>
+              ) : errorMsg ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center">
+                    <div className="text-red-500 mb-4 font-medium">Error: {errorMsg}</div>
+                    {errorMsg.includes('recursion') && (
+                      <div className="bg-red-50 text-red-800 p-4 rounded-xl text-left text-sm max-w-2xl mx-auto border border-red-200">
+                        <p className="font-bold mb-2">How to fix this Supabase RLS error:</p>
+                        <p className="mb-2">This is a known issue with Supabase Row Level Security (RLS) policies referencing the same table. Please run this SQL in your Supabase SQL Editor:</p>
+                        <pre className="bg-white p-3 rounded border border-red-100 overflow-x-auto text-xs">
+{`-- Drop the existing recursive policies
+DROP POLICY IF EXISTS "Super Admins can view all users" ON public.users;
+DROP POLICY IF EXISTS "Super Admins can update all users" ON public.users;
+DROP POLICY IF EXISTS "Super Admins can insert users" ON public.users;
+DROP POLICY IF EXISTS "Super Admins can delete users" ON public.users;
+
+-- Create a secure function to get user role
+CREATE OR REPLACE FUNCTION public.get_user_role()
+RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM public.users WHERE id = auth.uid();
+$$;
+
+-- Create new policies using the function
+CREATE POLICY "Super Admins can view all users" ON public.users FOR SELECT USING (public.get_user_role() = 'super_admin');
+CREATE POLICY "Super Admins can update all users" ON public.users FOR UPDATE USING (public.get_user_role() = 'super_admin');
+CREATE POLICY "Super Admins can insert users" ON public.users FOR INSERT WITH CHECK (public.get_user_role() = 'super_admin');
+CREATE POLICY "Super Admins can delete users" ON public.users FOR DELETE USING (public.get_user_role() = 'super_admin');`}
+                        </pre>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>

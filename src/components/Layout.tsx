@@ -37,6 +37,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [rlsError, setRlsError] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -46,11 +47,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     // Fetch initial profile
     const fetchProfile = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
         .single();
+        
+      if (error && error.message?.includes('recursion')) {
+        setRlsError(true);
+        console.error("RLS Infinite Recursion Detected:", error);
+      }
+      
       if (data) {
         setProfile({
           id: data.id,
@@ -159,6 +166,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="p-6 space-y-6">
+          {(profile?.role === 'super_admin' || profile?.role === 'admin' || profile?.role === 'publisher' || profile?.role === 'editor') && (
+            <Link 
+              to="/admin"
+              onClick={() => setIsSidebarOpen(false)}
+              className="w-full flex items-center justify-center py-3 px-4 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+            >
+              Admin Panel
+            </Link>
+          )}
           <Link 
             to="/dashboard/cv"
             onClick={() => setIsSidebarOpen(false)}
@@ -231,6 +247,45 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Page Content */}
         <div className="flex-1 overflow-y-auto p-6 lg:p-10 bg-[#f8f9fa] lg:bg-transparent flex flex-col">
+          {rlsError && (
+            <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center text-red-600 shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-red-900 font-bold text-lg mb-2">Database Security Error (Infinite Recursion)</h3>
+                  <p className="text-red-800 text-sm mb-4">
+                    Your Supabase database has a recursive Row Level Security (RLS) policy that is preventing the app from loading your profile and admin permissions. 
+                    To fix this, please run the following SQL in your Supabase SQL Editor:
+                  </p>
+                  <pre className="bg-white p-4 rounded-xl border border-red-100 overflow-x-auto text-xs text-gray-800 font-mono shadow-sm">
+{`-- Drop the existing recursive policies
+DROP POLICY IF EXISTS "Super Admins can view all users" ON public.users;
+DROP POLICY IF EXISTS "Super Admins can update all users" ON public.users;
+DROP POLICY IF EXISTS "Super Admins can insert users" ON public.users;
+DROP POLICY IF EXISTS "Super Admins can delete users" ON public.users;
+
+-- Create a secure function to get user role
+CREATE OR REPLACE FUNCTION public.get_user_role()
+RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM public.users WHERE id = auth.uid();
+$$;
+
+-- Create new policies using the function
+CREATE POLICY "Super Admins can view all users" ON public.users FOR SELECT USING (public.get_user_role() = 'super_admin');
+CREATE POLICY "Super Admins can update all users" ON public.users FOR UPDATE USING (public.get_user_role() = 'super_admin');
+CREATE POLICY "Super Admins can insert users" ON public.users FOR INSERT WITH CHECK (public.get_user_role() = 'super_admin');
+CREATE POLICY "Super Admins can delete users" ON public.users FOR DELETE USING (public.get_user_role() = 'super_admin');`}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="flex-1">
             {children}
           </div>
