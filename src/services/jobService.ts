@@ -1,7 +1,89 @@
 import { Job, JobSource, JobType, ExperienceLevel } from "../types";
 import { GoogleGenAI } from "@google/genai";
+import { supabase } from "../supabase";
 
 export async function fetchJobs(filters?: {
+  q?: string;
+  location?: string;
+  jobType?: JobType;
+  experienceLevel?: ExperienceLevel;
+  isRemote?: boolean;
+  companyCulture?: string[];
+  salaryMin?: number;
+  salaryMax?: number;
+}) {
+  try {
+    let query = supabase
+      .from('jobs')
+      .select('*')
+      .eq('is_active', true)
+      .order('posted_at', { ascending: false });
+
+    if (filters?.jobType) {
+      query = query.eq('job_type', filters.jobType);
+    }
+    if (filters?.experienceLevel) {
+      query = query.eq('experience_level', filters.experienceLevel);
+    }
+    if (filters?.isRemote) {
+      query = query.eq('is_remote', true);
+    }
+    if (filters?.salaryMin) {
+      query = query.gte('salary_max', filters.salaryMin);
+    }
+    if (filters?.salaryMax) {
+      query = query.lte('salary_min', filters.salaryMax);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    let mappedJobs = (data || []).map(job => ({
+      id: job.id,
+      externalId: job.external_id,
+      source: job.source,
+      sourceUrl: job.source_url,
+      title: job.title,
+      company: job.company,
+      location: job.location,
+      description: job.description,
+      salaryMin: job.salary_min,
+      salaryMax: job.salary_max,
+      currency: job.currency,
+      jobType: job.job_type,
+      experienceLevel: job.experience_level,
+      skills: job.skills || [],
+      postedAt: job.posted_at,
+      expiresAt: job.expires_at,
+      isVerified: job.is_verified,
+      isActive: job.is_active,
+      isRemote: job.is_remote,
+      companyCulture: job.company_culture || [],
+    })) as Job[];
+
+    // Client-side text search for title/company/location
+    if (filters?.q) {
+      const searchLower = filters.q.toLowerCase();
+      mappedJobs = mappedJobs.filter(j => 
+        j.title.toLowerCase().includes(searchLower) || 
+        j.company.toLowerCase().includes(searchLower) ||
+        j.location.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (filters?.location) {
+      const locLower = filters.location.toLowerCase();
+      mappedJobs = mappedJobs.filter(j => j.location.toLowerCase().includes(locLower));
+    }
+
+    return mappedJobs;
+  } catch (error) {
+    console.error("Error fetching jobs from database:", error);
+    return [];
+  }
+}
+
+export async function searchJobsWithAI(filters?: {
   q?: string;
   location?: string;
   jobType?: JobType;
@@ -249,6 +331,67 @@ export async function fetchJobs(filters?: {
   }
 }
 
+export async function enhanceJobDescription(description: string): Promise<string> {
+  try {
+    // @ts-ignore
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return description;
+
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = `You are an expert technical recruiter and copywriter. Please rewrite the following job description to make it richer, more engaging, and optimized for attracting top-tier candidates. Ensure it sounds professional, highlights the value proposition of the role, and is well-structured. Do not invent new requirements, just enhance the existing text.
+
+Original Description:
+${description}
+
+Return ONLY the enhanced description text. Do not include any markdown formatting like \`\`\` or conversational filler.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+
+    return response.text?.trim() || description;
+  } catch (error) {
+    console.error("Error enhancing job description:", error);
+    return description;
+  }
+}
+
 export async function getJobById(id: string) {
-  return null;
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', id)
+      .single();
+      
+    if (error) throw error;
+    if (!data) return null;
+    
+    return {
+      id: data.id,
+      externalId: data.external_id,
+      source: data.source,
+      sourceUrl: data.source_url,
+      title: data.title,
+      company: data.company,
+      location: data.location,
+      description: data.description,
+      salaryMin: data.salary_min,
+      salaryMax: data.salary_max,
+      currency: data.currency,
+      jobType: data.job_type,
+      experienceLevel: data.experience_level,
+      skills: data.skills || [],
+      postedAt: data.posted_at,
+      expiresAt: data.expires_at,
+      isVerified: data.is_verified,
+      isActive: data.is_active,
+      isRemote: data.is_remote,
+      companyCulture: data.company_culture || [],
+    } as Job;
+  } catch (error) {
+    console.error("Error fetching job by ID:", error);
+    return null;
+  }
 }

@@ -70,7 +70,16 @@ export async function addApplication(userId: string, job: Job, status: Applicati
         salary_min: job.salaryMin,
         salary_max: job.salaryMax,
         is_remote: job.isRemote,
-        culture_tags: job.companyCulture
+        culture_tags: job.companyCulture,
+        job_type: job.jobType,
+        experience_level: job.experienceLevel,
+        source_url: job.sourceUrl,
+        source: job.source,
+        currency: job.currency,
+        skills: job.skills,
+        is_active: job.isActive,
+        is_verified: job.isVerified,
+        posted_at: job.postedAt
       }])
       .select('id')
       .single();

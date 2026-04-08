@@ -46,6 +46,16 @@ CREATE TABLE public.jobs (
   salary_max NUMERIC,
   is_remote BOOLEAN DEFAULT false,
   culture_tags TEXT[],
+  job_type TEXT DEFAULT 'full_time',
+  experience_level TEXT DEFAULT 'mid',
+  source_url TEXT,
+  source TEXT DEFAULT 'manual',
+  currency TEXT DEFAULT 'AED',
+  skills TEXT[],
+  is_active BOOLEAN DEFAULT true,
+  is_verified BOOLEAN DEFAULT true,
+  posted_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  expires_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

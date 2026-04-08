@@ -143,7 +143,7 @@ export default function Jobs() {
           Find your next <span className="text-blue-700">career move.</span>
         </h1>
         <p className="text-gray-600 max-w-2xl text-lg">
-          Our AI performs a deep internet search across LinkedIn, Indeed, Bayt, and company career pages to find real-time, verified opportunities matching your profile.
+          Browse our curated list of verified, high-quality job opportunities. All postings are vetted by our team.
         </p>
       </div>
 
@@ -177,8 +177,8 @@ export default function Jobs() {
           onClick={handleSearch}
           className="bg-blue-700 hover:bg-blue-800 text-white font-bold px-8 py-3 rounded-xl transition-colors shrink-0 flex items-center gap-2"
         >
-          <Globe className="w-4 h-4" />
-          AI Deep Search
+          <Search className="w-4 h-4" />
+          Search Jobs
         </button>
       </div>
 
@@ -340,11 +340,11 @@ export default function Jobs() {
                 <div className="relative w-16 h-16 mb-6">
                   <div className="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
                   <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-                  <Globe className="absolute inset-0 m-auto w-6 h-6 text-blue-600 animate-pulse" />
+                  <Briefcase className="absolute inset-0 m-auto w-6 h-6 text-blue-600 animate-pulse" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Deep Internet Search in Progress...</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Loading Jobs...</h3>
                 <p className="text-sm text-gray-500 max-w-sm text-center">
-                  Our AI is currently scanning LinkedIn, Indeed, Bayt, and company career pages across the web to find the best real-time matches for "{filters.q || 'developer'}" in "{filters.location || 'UAE'}".
+                  Fetching the latest vetted opportunities.
                 </p>
               </div>
             ) : displayedJobs.length === 0 ? (

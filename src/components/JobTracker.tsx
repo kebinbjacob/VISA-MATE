@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
-import { getUserApplications, updateApplicationStatus, deleteApplication } from "../services/applicationService";
+import { getUserApplications, updateApplicationStatus, deleteApplication, addApplication } from "../services/applicationService";
 import { Application, ApplicationStatus, Job } from "../types";
-import { Briefcase, MapPin, Globe, Clock, Trash2, ExternalLink, GripVertical } from "lucide-react";
+import { Briefcase, MapPin, Globe, Clock, Trash2, ExternalLink, GripVertical, Plus, X } from "lucide-react";
 import { formatCurrency } from "../lib/utils";
 import { DndContext, DragEndEvent, closestCorners, useDraggable, useDroppable } from "@dnd-kit/core";
 
@@ -124,6 +124,17 @@ export default function JobTracker() {
   const { user } = useAuth();
   const [applications, setApplications] = useState<(Application & { job?: Job })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+
+  // Manual Job Form State
+  const [newJobTitle, setNewJobTitle] = useState("");
+  const [newJobCompany, setNewJobCompany] = useState("");
+  const [newJobLocation, setNewJobLocation] = useState("");
+  const [newJobSalaryMin, setNewJobSalaryMin] = useState("");
+  const [newJobSalaryMax, setNewJobSalaryMax] = useState("");
+  const [newJobUrl, setNewJobUrl] = useState("");
+  const [newJobStatus, setNewJobStatus] = useState<ApplicationStatus>("saved");
 
   useEffect(() => {
     if (user) {
@@ -181,6 +192,54 @@ export default function JobTracker() {
     }
   };
 
+  const handleAddManualJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsAdding(true);
+
+    try {
+      const manualJob: Job = {
+        id: `manual-${Date.now()}`,
+        externalId: `manual-${Date.now()}`,
+        source: 'manual',
+        sourceUrl: newJobUrl || '#',
+        title: newJobTitle,
+        company: newJobCompany,
+        location: newJobLocation || 'Remote',
+        description: 'Manually added job',
+        salaryMin: newJobSalaryMin ? Number(newJobSalaryMin) : undefined,
+        salaryMax: newJobSalaryMax ? Number(newJobSalaryMax) : undefined,
+        currency: 'AED',
+        jobType: 'full_time',
+        experienceLevel: 'mid',
+        skills: [],
+        postedAt: new Date().toISOString(),
+        isVerified: false,
+        isActive: true,
+      };
+
+      await addApplication(user.id, manualJob, newJobStatus);
+      
+      // Reload applications to get the new one with its ID
+      await loadApplications();
+      
+      // Reset form and close modal
+      setNewJobTitle("");
+      setNewJobCompany("");
+      setNewJobLocation("");
+      setNewJobSalaryMin("");
+      setNewJobSalaryMax("");
+      setNewJobUrl("");
+      setNewJobStatus("saved");
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error("Failed to add manual job:", error);
+      alert("Failed to add job. Please try again.");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -191,13 +250,22 @@ export default function JobTracker() {
 
   return (
     <div className="max-w-7xl mx-auto pb-12 h-full flex flex-col">
-      <div className="mb-8 shrink-0">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">
-          Application <span className="text-blue-700">Tracker.</span>
-        </h1>
-        <p className="text-gray-600 max-w-2xl text-lg">
-          Drag and drop your saved jobs to track your application progress.
-        </p>
+      <div className="mb-8 shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">
+            Application <span className="text-blue-700">Tracker.</span>
+          </h1>
+          <p className="text-gray-600 max-w-2xl text-lg">
+            Drag and drop your saved jobs to track your application progress.
+          </p>
+        </div>
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors font-bold text-sm shadow-sm shrink-0"
+        >
+          <Plus className="w-5 h-5" />
+          Add Job Manually
+        </button>
       </div>
 
       <div className="flex-1 overflow-x-auto hide-scrollbar pb-8">
@@ -215,6 +283,129 @@ export default function JobTracker() {
           </DndContext>
         </div>
       </div>
+
+      {/* Add Manual Job Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+              <h3 className="text-xl font-bold text-gray-900">Add Job Manually</h3>
+              <button 
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors bg-gray-100 hover:bg-gray-200 p-2 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto p-6">
+              <form id="add-job-form" onSubmit={handleAddManualJob} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Job Title *</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newJobTitle}
+                    onChange={(e) => setNewJobTitle(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                    placeholder="e.g. Senior Frontend Developer"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Company *</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newJobCompany}
+                    onChange={(e) => setNewJobCompany(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                    placeholder="e.g. Acme Corp"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Location</label>
+                  <input 
+                    type="text" 
+                    value={newJobLocation}
+                    onChange={(e) => setNewJobLocation(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                    placeholder="e.g. Dubai, UAE or Remote"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Min Salary (AED)</label>
+                    <input 
+                      type="number" 
+                      value={newJobSalaryMin}
+                      onChange={(e) => setNewJobSalaryMin(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                      placeholder="e.g. 15000"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Max Salary (AED)</label>
+                    <input 
+                      type="number" 
+                      value={newJobSalaryMax}
+                      onChange={(e) => setNewJobSalaryMax(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                      placeholder="e.g. 25000"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Job URL</label>
+                  <input 
+                    type="url" 
+                    value={newJobUrl}
+                    onChange={(e) => setNewJobUrl(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                    placeholder="https://..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Initial Status</label>
+                  <select 
+                    value={newJobStatus}
+                    onChange={(e) => setNewJobStatus(e.target.value as ApplicationStatus)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow bg-white"
+                  >
+                    <option value="saved">Saved</option>
+                    <option value="applied">Applied</option>
+                    <option value="interview">Interviewing</option>
+                    <option value="offer">Offer Received</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+              </form>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3 shrink-0 bg-gray-50">
+              <button 
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-200 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit"
+                form="add-job-form"
+                disabled={isAdding}
+                className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
+              >
+                {isAdding ? "Adding..." : "Add Job"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

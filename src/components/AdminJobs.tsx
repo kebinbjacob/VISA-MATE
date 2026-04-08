@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import { Job, JobType, ExperienceLevel } from "../types";
-import { Plus, Search, Edit2, Trash2, UploadCloud, Loader2, Image as ImageIcon, CheckCircle } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, UploadCloud, Loader2, Image as ImageIcon, CheckCircle, Sparkles, Globe } from "lucide-react";
 import { GoogleGenAI } from "@google/genai";
+import { searchJobsWithAI, enhanceJobDescription } from "../services/jobService";
 
 export default function AdminJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -10,7 +11,14 @@ export default function AdminJobs() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   
+  const [isAiSearchModalOpen, setIsAiSearchModalOpen] = useState(false);
+  const [aiSearchQuery, setAiSearchQuery] = useState("");
+  const [aiSearchLocation, setAiSearchLocation] = useState("UAE");
+  const [isAiSearching, setIsAiSearching] = useState(false);
+  const [aiSearchResults, setAiSearchResults] = useState<Job[]>([]);
+
   const [formData, setFormData] = useState<Partial<Job>>({
     title: "",
     company: "",
@@ -193,6 +201,79 @@ export default function AdminJobs() {
     }
   };
 
+  const handleEnhanceDescription = async () => {
+    if (!formData.description) return;
+    setIsEnhancing(true);
+    try {
+      const enhanced = await enhanceJobDescription(formData.description);
+      setFormData(prev => ({ ...prev, description: enhanced }));
+    } catch (error) {
+      console.error("Failed to enhance description:", error);
+      alert("Failed to enhance description.");
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  const handleAiSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAiSearching(true);
+    try {
+      const results = await searchJobsWithAI({ q: aiSearchQuery, location: aiSearchLocation });
+      setAiSearchResults(results);
+    } catch (error) {
+      console.error("AI Search failed:", error);
+      alert("AI Search failed.");
+    } finally {
+      setIsAiSearching(false);
+    }
+  };
+
+  const handleApproveAiJob = async (job: Job) => {
+    try {
+      const jobData = {
+        external_id: job.externalId || `ai-${Date.now()}`,
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        description: job.description,
+        job_type: job.jobType,
+        experience_level: job.experienceLevel,
+        source_url: job.sourceUrl || '#',
+        source: job.source || 'manual',
+        salary_min: job.salaryMin,
+        salary_max: job.salaryMax,
+        currency: 'AED',
+        skills: job.skills || [],
+        is_active: true,
+        is_verified: true,
+        posted_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from('jobs').insert([jobData]);
+      if (error) throw error;
+
+      alert("Job approved and added to the board!");
+      setAiSearchResults(prev => prev.filter(j => j.id !== job.id));
+      fetchJobs();
+    } catch (error: any) {
+      console.error("Error approving job:", error);
+      alert(`Failed to approve job: ${error.message}`);
+    }
+  };
+
+  const handleDeleteJob = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this job?")) return;
+    try {
+      const { error } = await supabase.from('jobs').delete().eq('id', id);
+      if (error) throw error;
+      setJobs(jobs.filter(j => j.id !== id));
+    } catch (error: any) {
+      console.error("Error deleting job:", error);
+      alert("Failed to delete job.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -200,13 +281,22 @@ export default function AdminJobs() {
           <h1 className="text-2xl font-bold text-gray-900">Job Postings</h1>
           <p className="text-gray-500 text-sm">Manage job listings and use AI to scan new postings.</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Add Job
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsAiSearchModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+          >
+            <Globe className="w-5 h-5" />
+            AI Job Search
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Add Job
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -258,7 +348,10 @@ export default function AdminJobs() {
                       <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50">
+                      <button 
+                        onClick={() => handleDeleteJob(job.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -416,10 +509,21 @@ export default function AdminJobs() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">Description *</label>
+                    <button
+                      type="button"
+                      onClick={handleEnhanceDescription}
+                      disabled={isEnhancing || !formData.description}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {isEnhancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      Enhance with AI
+                    </button>
+                  </div>
                   <textarea 
                     required
-                    rows={4}
+                    rows={6}
                     value={formData.description}
                     onChange={e => setFormData({...formData, description: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-y"
@@ -442,6 +546,97 @@ export default function AdminJobs() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* AI Search Modal */}
+      {isAiSearchModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full shadow-xl my-8 flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center shrink-0">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Globe className="w-6 h-6 text-indigo-600" />
+                AI Job Search
+              </h2>
+              <button 
+                onClick={() => setIsAiSearchModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 border-b border-gray-100 bg-gray-50 shrink-0">
+              <form onSubmit={handleAiSearch} className="flex gap-4">
+                <div className="flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="Job Title or Keywords (e.g. Frontend Developer)"
+                    value={aiSearchQuery}
+                    onChange={e => setAiSearchQuery(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    required
+                  />
+                </div>
+                <div className="w-48">
+                  <input 
+                    type="text" 
+                    placeholder="Location (e.g. UAE)"
+                    value={aiSearchLocation}
+                    onChange={e => setAiSearchLocation(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    required
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  disabled={isAiSearching}
+                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0"
+                >
+                  {isAiSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                  Search Web
+                </button>
+              </form>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {isAiSearching ? (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                  <Loader2 className="w-8 h-8 animate-spin mb-4 text-indigo-600" />
+                  <p>AI is scouring the web for job postings...</p>
+                </div>
+              ) : aiSearchResults.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No results yet. Enter a query and search to find jobs.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {aiSearchResults.map((job) => (
+                    <div key={job.id} className="border border-gray-200 rounded-xl p-4 hover:border-indigo-300 transition-colors bg-white">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-900">{job.title}</h3>
+                          <p className="text-sm text-gray-600 font-medium">{job.company} • {job.location}</p>
+                        </div>
+                        <button 
+                          onClick={() => handleApproveAiJob(job)}
+                          className="px-4 py-1.5 bg-green-100 text-green-700 font-bold text-sm rounded-lg hover:bg-green-200 transition-colors flex items-center gap-1"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Approve & Add
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-700 mb-3 line-clamp-2">{job.description}</p>
+                      <div className="flex gap-2 text-xs">
+                        <span className="px-2 py-1 bg-gray-100 rounded text-gray-600 capitalize">{job.jobType.replace('_', ' ')}</span>
+                        <span className="px-2 py-1 bg-gray-100 rounded text-gray-600 capitalize">{job.experienceLevel}</span>
+                        <a href={job.sourceUrl} target="_blank" rel="noreferrer" className="px-2 py-1 bg-blue-50 text-blue-600 rounded hover:underline">View Source</a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
