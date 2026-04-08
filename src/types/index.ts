@@ -22,6 +22,7 @@ export interface Job {
   externalId: string;
   source: JobSource;
   sourceUrl: string;
+  contactEmail?: string;
   title: string;
   company: string;
   location: string;

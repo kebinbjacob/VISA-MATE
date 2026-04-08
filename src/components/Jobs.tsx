@@ -3,7 +3,7 @@ import { fetchJobs } from "../services/jobService";
 import { getUserApplications, addApplication, deleteApplication } from "../services/applicationService";
 import { Job, JobType, ExperienceLevel, Application } from "../types";
 import { useAuth } from "./AuthProvider";
-import { Search, MapPin, Briefcase, DollarSign, Filter, ExternalLink, CheckCircle2, Bookmark, ChevronLeft, ChevronRight, Globe, Clock, ShieldCheck, Building2 } from "lucide-react";
+import { Search, MapPin, Briefcase, DollarSign, Filter, ExternalLink, CheckCircle2, Bookmark, ChevronLeft, ChevronRight, Globe, Clock, ShieldCheck, Building2, Mail } from "lucide-react";
 import { formatCurrency, formatDate } from "../lib/utils";
 
 export default function Jobs() {
@@ -445,6 +445,15 @@ export default function Jobs() {
                       >
                         <Bookmark className={`w-5 h-5 ${savedJobs.has(job.id) ? 'fill-blue-700' : ''}`} />
                       </button>
+                      {job.contactEmail && (
+                        <a 
+                          href={`mailto:${job.contactEmail}?subject=Application for ${job.title}`}
+                          className="px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-200 transition-colors flex items-center gap-2"
+                        >
+                          <Mail className="w-4 h-4" />
+                          <span className="hidden sm:inline">Email HR</span>
+                        </a>
+                      )}
                       <a 
                         href={job.sourceUrl} 
                         target="_blank" 

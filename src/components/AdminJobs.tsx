@@ -27,6 +27,7 @@ export default function AdminJobs() {
     jobType: "full_time",
     experienceLevel: "mid",
     sourceUrl: "",
+    contactEmail: "",
     source: "manual",
     isActive: true,
   });
@@ -163,6 +164,7 @@ export default function AdminJobs() {
         job_type: formData.jobType,
         experience_level: formData.experienceLevel,
         source_url: formData.sourceUrl || '#',
+        contact_email: formData.contactEmail || null,
         source: formData.source || 'manual',
         salary_min: formData.salaryMin,
         salary_max: formData.salaryMax,
@@ -189,6 +191,7 @@ export default function AdminJobs() {
         jobType: "full_time",
         experienceLevel: "mid",
         sourceUrl: "",
+        contactEmail: "",
         source: "manual",
         isActive: true,
       });
@@ -240,6 +243,7 @@ export default function AdminJobs() {
         job_type: job.jobType,
         experience_level: job.experienceLevel,
         source_url: job.sourceUrl || '#',
+        contact_email: job.contactEmail || null,
         source: job.source || 'manual',
         salary_min: job.salaryMin,
         salary_max: job.salaryMax,
@@ -460,6 +464,16 @@ export default function AdminJobs() {
                       value={formData.sourceUrl}
                       onChange={e => setFormData({...formData, sourceUrl: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+                    <input 
+                      type="email" 
+                      value={formData.contactEmail || ''}
+                      onChange={e => setFormData({...formData, contactEmail: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="hr@company.com"
                     />
                   </div>
                   <div>
