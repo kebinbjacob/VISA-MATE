@@ -25,6 +25,7 @@ export interface Job {
   contactEmail?: string;
   title: string;
   company: string;
+  industry?: string;
   location: string;
   description: string;
   salaryMin?: number;

@@ -9,6 +9,7 @@ export default function AdminJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
@@ -16,12 +17,20 @@ export default function AdminJobs() {
   const [isAiSearchModalOpen, setIsAiSearchModalOpen] = useState(false);
   const [aiSearchQuery, setAiSearchQuery] = useState("");
   const [aiSearchLocation, setAiSearchLocation] = useState("UAE");
+  const [aiSearchCompanyUrl, setAiSearchCompanyUrl] = useState("");
+  const [aiSearchIndustry, setAiSearchIndustry] = useState("");
+  const [aiSearchCompanyCulture, setAiSearchCompanyCulture] = useState("");
   const [isAiSearching, setIsAiSearching] = useState(false);
   const [aiSearchResults, setAiSearchResults] = useState<Job[]>([]);
+
+  const [isScannedModalOpen, setIsScannedModalOpen] = useState(false);
+  const [scannedJobs, setScannedJobs] = useState<Partial<Job>[]>([]);
+  const [selectedScannedJobs, setSelectedScannedJobs] = useState<Set<number>>(new Set());
 
   const [formData, setFormData] = useState<Partial<Job>>({
     title: "",
     company: "",
+    industry: "",
     location: "",
     description: "",
     jobType: "full_time",
@@ -29,6 +38,7 @@ export default function AdminJobs() {
     sourceUrl: "",
     contactEmail: "",
     source: "manual",
+    companyCulture: [],
     isActive: true,
   });
 
@@ -51,8 +61,10 @@ export default function AdminJobs() {
         externalId: job.external_id,
         source: job.source,
         sourceUrl: job.source_url,
+        contactEmail: job.contact_email,
         title: job.title,
         company: job.company,
+        industry: job.industry,
         location: job.location,
         description: job.description,
         salaryMin: job.salary_min,
@@ -94,7 +106,7 @@ export default function AdminJobs() {
         const apiKey = process.env.GEMINI_API_KEY;
         const ai = new GoogleGenAI({ apiKey });
 
-        const prompt = `Analyze this job posting image and extract the details into a strict JSON object with the following keys:
+        const prompt = `Analyze this job posting image and extract ALL job listings present. Return a strict JSON ARRAY of objects. Each object MUST have the following keys:
         - title (string)
         - company (string)
         - location (string)
@@ -106,7 +118,7 @@ export default function AdminJobs() {
         - skills (array of strings)
         - contactEmail (string or null, extract email address if present)
         
-        Return ONLY the raw JSON object. No markdown formatting, no backticks.`;
+        Return ONLY the raw JSON array. No markdown formatting, no backticks.`;
 
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
@@ -116,28 +128,21 @@ export default function AdminJobs() {
           ]
         });
 
-        let text = response.text || "{}";
+        let text = response.text || "[]";
         if (text.includes("\`\`\`json")) {
           text = text.split("\`\`\`json")[1].split("\`\`\`")[0].trim();
         } else if (text.includes("\`\`\`")) {
           text = text.split("\`\`\`")[1].split("\`\`\`")[0].trim();
         }
 
-        const extractedData = JSON.parse(text);
+        let extractedData = JSON.parse(text);
+        if (!Array.isArray(extractedData)) {
+          extractedData = [extractedData];
+        }
         
-        setFormData(prev => ({
-          ...prev,
-          title: extractedData.title || prev.title,
-          company: extractedData.company || prev.company,
-          location: extractedData.location || prev.location,
-          description: extractedData.description || prev.description,
-          jobType: extractedData.jobType || prev.jobType,
-          experienceLevel: extractedData.experienceLevel || prev.experienceLevel,
-          salaryMin: extractedData.salaryMin || prev.salaryMin,
-          salaryMax: extractedData.salaryMax || prev.salaryMax,
-          skills: extractedData.skills || prev.skills,
-          contactEmail: extractedData.contactEmail || prev.contactEmail,
-        }));
+        setScannedJobs(extractedData);
+        setSelectedScannedJobs(new Set(extractedData.map((_, i) => i)));
+        setIsScannedModalOpen(true);
         
         setScanSuccess(true);
         setTimeout(() => setScanSuccess(false), 3000);
@@ -153,38 +158,111 @@ export default function AdminJobs() {
     }
   };
 
+  const toggleScannedJobSelection = (index: number) => {
+    const newSet = new Set(selectedScannedJobs);
+    if (newSet.has(index)) {
+      newSet.delete(index);
+    } else {
+      newSet.add(index);
+    }
+    setSelectedScannedJobs(newSet);
+  };
+
+  const deleteScannedJob = (index: number) => {
+    setScannedJobs(prev => prev.filter((_, i) => i !== index));
+    const newSet = new Set<number>();
+    selectedScannedJobs.forEach(val => {
+      if (val < index) newSet.add(val);
+      else if (val > index) newSet.add(val - 1);
+    });
+    setSelectedScannedJobs(newSet);
+  };
+
+  const handleSaveScannedJobs = async () => {
+    const jobsToSave = scannedJobs.filter((_, i) => selectedScannedJobs.has(i));
+    if (jobsToSave.length === 0) {
+      alert("No jobs selected to save.");
+      return;
+    }
+
+    try {
+      const formattedJobs = jobsToSave.map(job => ({
+        external_id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title: job.title || 'Untitled',
+        company: job.company || 'Unknown',
+        location: job.location || 'Unknown',
+        description: job.description || '',
+        job_type: job.jobType || 'full_time',
+        experience_level: job.experienceLevel || 'mid',
+        source_url: '#',
+        contact_email: job.contactEmail || null,
+        source: 'manual',
+        salary_min: job.salaryMin || null,
+        salary_max: job.salaryMax || null,
+        currency: 'AED',
+        skills: job.skills || [],
+        is_active: true,
+        is_verified: true,
+        posted_at: new Date().toISOString(),
+      }));
+
+      const { error } = await supabase.from('jobs').insert(formattedJobs);
+      if (error) throw error;
+
+      alert(`Successfully added ${formattedJobs.length} jobs!`);
+      setIsScannedModalOpen(false);
+      fetchJobs();
+    } catch (error: any) {
+      console.error("Error saving scanned jobs:", error);
+      alert(`Failed to save jobs: ${error.message}`);
+    }
+  };
+
   const handleSaveJob = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
       const jobData = {
-        external_id: `manual-${Date.now()}`,
-        title: formData.title,
-        company: formData.company,
-        location: formData.location,
-        description: formData.description,
-        job_type: formData.jobType,
-        experience_level: formData.experienceLevel,
+        title: formData.title || '',
+        company: formData.company || '',
+        industry: formData.industry || null,
+        location: formData.location || '',
+        description: formData.description || '',
+        job_type: formData.jobType || 'full_time',
+        experience_level: formData.experienceLevel || 'mid',
         source_url: formData.sourceUrl || '#',
         contact_email: formData.contactEmail || null,
         source: formData.source || 'manual',
-        salary_min: formData.salaryMin,
-        salary_max: formData.salaryMax,
+        salary_min: formData.salaryMin || null,
+        salary_max: formData.salaryMax || null,
         currency: 'AED',
         skills: formData.skills || [],
-        is_active: formData.isActive,
+        company_culture: formData.companyCulture || [],
+        is_active: formData.isActive ?? true,
         is_verified: true,
-        posted_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from('jobs')
-        .insert([jobData]);
+      if (editingJobId) {
+        const { error } = await supabase
+          .from('jobs')
+          .update(jobData)
+          .eq('id', editingJobId);
+        if (error) throw error;
+        alert("Job updated successfully!");
+      } else {
+        const { error } = await supabase
+          .from('jobs')
+          .insert([{
+            ...jobData,
+            external_id: `manual-${Date.now()}`,
+            posted_at: new Date().toISOString(),
+          }]);
+        if (error) throw error;
+        alert("Job saved successfully!");
+      }
 
-      if (error) throw error;
-
-      alert("Job saved successfully!");
       setIsModalOpen(false);
+      setEditingJobId(null);
       setFormData({
         title: "",
         company: "",
@@ -224,7 +302,13 @@ export default function AdminJobs() {
     e.preventDefault();
     setIsAiSearching(true);
     try {
-      const results = await searchJobsWithAI({ q: aiSearchQuery, location: aiSearchLocation });
+      const results = await searchJobsWithAI({ 
+        q: aiSearchQuery, 
+        location: aiSearchLocation,
+        companyUrl: aiSearchCompanyUrl,
+        industry: aiSearchIndustry,
+        companyCulture: aiSearchCompanyCulture ? aiSearchCompanyCulture.split(',').map(s => s.trim()) : undefined
+      });
       setAiSearchResults(results);
     } catch (error) {
       console.error("AI Search failed:", error);
@@ -234,38 +318,50 @@ export default function AdminJobs() {
     }
   };
 
-  const handleApproveAiJob = async (job: Job) => {
-    try {
-      const jobData = {
-        external_id: job.externalId || `ai-${Date.now()}`,
-        title: job.title,
-        company: job.company,
-        location: job.location,
-        description: job.description,
-        job_type: job.jobType,
-        experience_level: job.experienceLevel,
-        source_url: job.sourceUrl || '#',
-        contact_email: job.contactEmail || null,
-        source: job.source || 'manual',
-        salary_min: job.salaryMin,
-        salary_max: job.salaryMax,
-        currency: 'AED',
-        skills: job.skills || [],
-        is_active: true,
-        is_verified: true,
-        posted_at: new Date().toISOString(),
-      };
+  const handleApproveAiJob = (job: Job) => {
+    setEditingJobId(null);
+    setFormData({
+      title: job.title,
+      company: job.company,
+      industry: job.industry || '',
+      location: job.location,
+      description: job.description,
+      jobType: job.jobType,
+      experienceLevel: job.experienceLevel,
+      sourceUrl: job.sourceUrl === '#' ? '' : job.sourceUrl,
+      contactEmail: job.contactEmail,
+      source: job.source,
+      salaryMin: job.salaryMin,
+      salaryMax: job.salaryMax,
+      skills: job.skills || [],
+      companyCulture: job.companyCulture || [],
+      isActive: true,
+    });
+    setIsAiSearchModalOpen(false);
+    setIsModalOpen(true);
+    setAiSearchResults(prev => prev.filter(j => j.id !== job.id));
+  };
 
-      const { error } = await supabase.from('jobs').insert([jobData]);
-      if (error) throw error;
-
-      alert("Job approved and added to the board!");
-      setAiSearchResults(prev => prev.filter(j => j.id !== job.id));
-      fetchJobs();
-    } catch (error: any) {
-      console.error("Error approving job:", error);
-      alert(`Failed to approve job: ${error.message}`);
-    }
+  const handleEditJob = (job: Job) => {
+    setEditingJobId(job.id);
+    setFormData({
+      title: job.title,
+      company: job.company,
+      industry: job.industry || '',
+      location: job.location,
+      description: job.description,
+      jobType: job.jobType,
+      experienceLevel: job.experienceLevel,
+      sourceUrl: job.sourceUrl === '#' ? '' : job.sourceUrl,
+      contactEmail: job.contactEmail,
+      source: job.source,
+      salaryMin: job.salaryMin,
+      salaryMax: job.salaryMax,
+      skills: job.skills,
+      companyCulture: job.companyCulture || [],
+      isActive: job.isActive,
+    });
+    setIsModalOpen(true);
   };
 
   const handleDeleteJob = async (id: string) => {
@@ -288,6 +384,22 @@ export default function AdminJobs() {
           <p className="text-gray-500 text-sm">Manage job listings and use AI to scan new postings.</p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="relative">
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={isScanning}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+            />
+            <button 
+              disabled={isScanning}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50"
+            >
+              <UploadCloud className="w-5 h-5" />
+              Scan Screenshot
+            </button>
+          </div>
           <button 
             onClick={() => setIsAiSearchModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
@@ -296,7 +408,13 @@ export default function AdminJobs() {
             AI Job Search
           </button>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingJobId(null);
+              setFormData({
+                title: "", company: "", location: "", description: "", jobType: "full_time", experienceLevel: "mid", sourceUrl: "", contactEmail: "", source: "manual", isActive: true
+              });
+              setIsModalOpen(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-5 h-5" />
@@ -351,7 +469,10 @@ export default function AdminJobs() {
                       </span>
                     </td>
                     <td className="p-4 flex justify-end gap-2">
-                      <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
+                      <button 
+                        onClick={() => handleEditJob(job)}
+                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
+                      >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button 
@@ -374,9 +495,15 @@ export default function AdminJobs() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-0 sm:p-4">
           <div className="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:rounded-2xl max-w-3xl shadow-xl flex flex-col">
             <div className="p-4 sm:p-6 border-b border-gray-200 flex justify-between items-center shrink-0">
-              <h2 className="text-xl font-bold text-gray-900">Add New Job</h2>
+              <h2 className="text-xl font-bold text-gray-900">{editingJobId ? 'Edit Job' : 'Add New Job'}</h2>
               <button 
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingJobId(null);
+                  setFormData({
+                    title: "", company: "", location: "", description: "", jobType: "full_time", experienceLevel: "mid", sourceUrl: "", contactEmail: "", source: "manual", isActive: true
+                  });
+                }}
                 className="text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -434,7 +561,7 @@ export default function AdminJobs() {
                     <input 
                       type="text" 
                       required
-                      value={formData.title}
+                      value={formData.title || ''}
                       onChange={e => setFormData({...formData, title: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
@@ -444,9 +571,19 @@ export default function AdminJobs() {
                     <input 
                       type="text" 
                       required
-                      value={formData.company}
+                      value={formData.company || ''}
                       onChange={e => setFormData({...formData, company: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                    <input 
+                      type="text" 
+                      value={formData.industry || ''}
+                      onChange={e => setFormData({...formData, industry: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="e.g. Technology, Finance"
                     />
                   </div>
                   <div>
@@ -454,7 +591,7 @@ export default function AdminJobs() {
                     <input 
                       type="text" 
                       required
-                      value={formData.location}
+                      value={formData.location || ''}
                       onChange={e => setFormData({...formData, location: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
@@ -463,7 +600,7 @@ export default function AdminJobs() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Source URL</label>
                     <input 
                       type="url" 
-                      value={formData.sourceUrl}
+                      value={formData.sourceUrl || ''}
                       onChange={e => setFormData({...formData, sourceUrl: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
@@ -476,6 +613,16 @@ export default function AdminJobs() {
                       onChange={e => setFormData({...formData, contactEmail: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                       placeholder="hr@company.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Company Culture</label>
+                    <input 
+                      type="text" 
+                      value={formData.companyCulture?.join(', ') || ''}
+                      onChange={e => setFormData({...formData, companyCulture: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="e.g. Fast-paced, Remote-first"
                     />
                   </div>
                   <div>
@@ -540,7 +687,7 @@ export default function AdminJobs() {
                   <textarea 
                     required
                     rows={6}
-                    value={formData.description}
+                    value={formData.description || ''}
                     onChange={e => setFormData({...formData, description: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-y"
                   />
@@ -552,7 +699,13 @@ export default function AdminJobs() {
             <div className="p-4 sm:p-6 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 sm:rounded-b-2xl">
               <button 
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingJobId(null);
+                  setFormData({
+                    title: "", company: "", location: "", description: "", jobType: "full_time", experienceLevel: "mid", sourceUrl: "", contactEmail: "", source: "manual", isActive: true
+                  });
+                }}
                 className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition-colors"
               >
                 Cancel
@@ -562,7 +715,7 @@ export default function AdminJobs() {
                 form="add-job-form"
                 className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-sm"
               >
-                Save Job
+                {editingJobId ? 'Update Job' : 'Save Job'}
               </button>
             </div>
           </div>
@@ -586,35 +739,68 @@ export default function AdminJobs() {
             </div>
             
             <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50 shrink-0">
-              <form onSubmit={handleAiSearch} className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <div className="flex-1">
-                  <input 
-                    type="text" 
-                    placeholder="Job Title or Keywords (e.g. Frontend Developer)"
-                    value={aiSearchQuery}
-                    onChange={e => setAiSearchQuery(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                    required
-                  />
+              <form onSubmit={handleAiSearch} className="flex flex-col gap-3 sm:gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                  <div className="flex-1">
+                    <input 
+                      type="text" 
+                      placeholder="Job Title or Keywords (e.g. Frontend Developer)"
+                      value={aiSearchQuery}
+                      onChange={e => setAiSearchQuery(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                      required
+                    />
+                  </div>
+                  <div className="w-full sm:w-48">
+                    <input 
+                      type="text" 
+                      placeholder="Location (e.g. UAE)"
+                      value={aiSearchLocation}
+                      onChange={e => setAiSearchLocation(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="w-full sm:w-48">
-                  <input 
-                    type="text" 
-                    placeholder="Location (e.g. UAE)"
-                    value={aiSearchLocation}
-                    onChange={e => setAiSearchLocation(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                    required
-                  />
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                  <div className="flex-1">
+                    <input 
+                      type="url" 
+                      placeholder="Company Career Page URL (Optional)"
+                      value={aiSearchCompanyUrl}
+                      onChange={e => setAiSearchCompanyUrl(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <input 
+                      type="text" 
+                      placeholder="Industry (Optional)"
+                      value={aiSearchIndustry}
+                      onChange={e => setAiSearchIndustry(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <input 
+                      type="text" 
+                      placeholder="Company Culture (comma separated, Optional)"
+                      value={aiSearchCompanyCulture}
+                      onChange={e => setAiSearchCompanyCulture(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
                 </div>
-                <button 
-                  type="submit"
-                  disabled={isAiSearching}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shrink-0"
-                >
-                  {isAiSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                  Search Web
-                </button>
+                <div className="flex justify-end">
+                  <button 
+                    type="submit"
+                    disabled={isAiSearching}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shrink-0"
+                  >
+                    {isAiSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                    Search Web
+                  </button>
+                </div>
               </form>
             </div>
 
@@ -659,6 +845,95 @@ export default function AdminJobs() {
           </div>
         </div>
       )}
+      {/* Scanned Jobs Modal */}
+      {isScannedModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
+              <h2 className="text-xl sm:text-2xl font-black text-gray-900 flex items-center gap-2">
+                <ImageIcon className="w-6 h-6 text-blue-600" />
+                Scanned Jobs
+              </h2>
+              <button 
+                onClick={() => setIsScannedModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-gray-50/50">
+              {scannedJobs.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No jobs found in the image.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {scannedJobs.map((job, index) => (
+                    <div key={index} className={`border rounded-xl p-4 transition-colors bg-white ${selectedScannedJobs.has(index) ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-200'}`}>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-3">
+                        <div className="flex items-start gap-3">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedScannedJobs.has(index)}
+                            onChange={() => toggleScannedJobSelection(index)}
+                            className="mt-1.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                          />
+                          <div>
+                            <h3 className="font-bold text-lg text-gray-900">{job.title || 'Untitled'}</h3>
+                            <p className="text-sm text-gray-600 font-medium">{job.company || 'Unknown Company'} • {job.location || 'Unknown Location'}</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => deleteScannedJob(index)}
+                          className="w-full sm:w-auto px-3 py-1.5 bg-red-50 text-red-600 font-bold text-sm rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-1 shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-700 mb-3 line-clamp-2 ml-8">{job.description}</p>
+                      <div className="flex gap-2 text-xs ml-8">
+                        <span className="px-2 py-1 bg-gray-100 rounded text-gray-600 capitalize">{(job.jobType || 'full_time').replace('_', ' ')}</span>
+                        <span className="px-2 py-1 bg-gray-100 rounded text-gray-600 capitalize">{job.experienceLevel || 'mid'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 sm:p-6 border-t border-gray-100 bg-white shrink-0 flex justify-end gap-3">
+              <button 
+                onClick={() => setIsScannedModalOpen(false)}
+                className="px-6 py-2.5 text-gray-700 font-bold hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveScannedJobs}
+                disabled={selectedScannedJobs.size === 0}
+                className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                <CheckCircle className="w-5 h-5" />
+                Save {selectedScannedJobs.size} Selected Jobs
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Scanning Overlay */}
+      {isScanning && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center text-white">
+          <Loader2 className="w-16 h-16 animate-spin mb-4 text-blue-400" />
+          <h2 className="text-2xl font-bold mb-2">Scanning Screenshot...</h2>
+          <p className="text-gray-300 max-w-md text-center">
+            Our AI is analyzing the image to extract job titles, companies, locations, and descriptions. This may take a few seconds.
+          </p>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -11,6 +11,7 @@ export default function Jobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedJobs, setSavedJobs] = useState<Map<string, string>>(new Map()); // jobId -> applicationId
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   const [filters, setFilters] = useState({
     q: "",
@@ -111,6 +112,18 @@ export default function Jobs() {
     } catch (error) {
       console.error("Failed to toggle save:", error);
     }
+  };
+
+  const toggleExpandJob = (jobId: string) => {
+    setExpandedJobs(prev => {
+      const next = new Set(prev);
+      if (next.has(jobId)) {
+        next.delete(jobId);
+      } else {
+        next.add(jobId);
+      }
+      return next;
+    });
   };
 
   const toggleIndustry = (ind: string) => {
@@ -378,6 +391,12 @@ export default function Jobs() {
                           </h2>
                           <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
                             <span className="font-medium text-gray-900">{job.company}</span>
+                            {job.industry && (
+                              <>
+                                <span>•</span>
+                                <span className="text-gray-500">{job.industry}</span>
+                              </>
+                            )}
                             <span>•</span>
                             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-gray-400" /> {job.location}</span>
                           </div>
@@ -391,9 +410,19 @@ export default function Jobs() {
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                    {job.description}
-                  </p>
+                  <div className="flex flex-col gap-1">
+                    <p className={`text-sm text-gray-600 leading-relaxed whitespace-pre-wrap ${expandedJobs.has(job.id) ? '' : 'line-clamp-2'}`}>
+                      {job.description}
+                    </p>
+                    {job.description && job.description.length > 100 && (
+                      <button 
+                        onClick={() => toggleExpandJob(job.id)}
+                        className="text-blue-600 text-xs font-semibold hover:underline self-start"
+                      >
+                        {expandedJobs.has(job.id) ? 'Show Less' : 'Read More'}
+                      </button>
+                    )}
+                  </div>
                   
                   <div className="flex flex-wrap gap-2">
                     <span className="px-3 py-1.5 bg-green-50 text-green-700 text-xs font-semibold rounded-lg flex items-center gap-1.5 border border-green-100">

@@ -87,6 +87,8 @@ export async function fetchJobs(filters?: {
 export async function searchJobsWithAI(filters?: {
   q?: string;
   location?: string;
+  companyUrl?: string;
+  industry?: string;
   jobType?: JobType;
   experienceLevel?: ExperienceLevel;
   isRemote?: boolean;
@@ -97,6 +99,9 @@ export async function searchJobsWithAI(filters?: {
   try {
     const query = filters?.q || "developer";
     const location = filters?.location || "UAE";
+    const companyUrl = filters?.companyUrl;
+    const industry = filters?.industry;
+    const companyCulture = filters?.companyCulture?.join(', ');
     
     // @ts-ignore
     const apiKey = process.env.GEMINI_API_KEY;
@@ -110,11 +115,13 @@ export async function searchJobsWithAI(filters?: {
 
     const ai = new GoogleGenAI({ apiKey });
     
-    const searchPrompt = `Perform a deep internet search across all major job boards (LinkedIn, Indeed, Bayt, GulfTalent, NaukriGulf, etc.) and company career pages to find 10 recent, real job postings matching the following criteria:
+    const searchPrompt = `Perform a deep internet search to find 10 recent, real job postings matching the following criteria:
     - Job Title/Keyword: "${query}"
     - Location: "${location}"
+    ${companyUrl ? `- CRITICAL: Prioritize searching within this specific company URL or career page: ${companyUrl}` : '- Search across major job boards (LinkedIn, Indeed, Bayt, GulfTalent, NaukriGulf, etc.) and company career pages.'}
+    ${industry ? `- Industry: ${industry}` : ''}
+    ${companyCulture ? `- Company Culture: ${companyCulture}` : ''}
     ${filters?.isRemote ? '- Must be a Remote position' : ''}
-    ${filters?.companyCulture && filters.companyCulture.length > 0 ? `- Company Culture should align with: ${filters.companyCulture.join(', ')}` : ''}
     ${filters?.salaryMin ? `- Minimum Salary: ${filters.salaryMin} AED` : ''}
     ${filters?.salaryMax ? `- Maximum Salary: ${filters.salaryMax} AED` : ''}
     
@@ -125,6 +132,7 @@ export async function searchJobsWithAI(filters?: {
     - id: A unique string ID (e.g., "job-123").
     - title: The exact job title.
     - company: The hiring company's name.
+    - industry: (Optional) The industry of the company or job.
     - location: The specific job location (e.g., "Dubai, UAE").
     - description: A short 2-3 sentence summary of the role and requirements.
     - sourceUrl: The DIRECT URL to apply or view the job posting.
@@ -195,7 +203,7 @@ export async function searchJobsWithAI(filters?: {
                              sourceUrl.endsWith(".ae/");
       
       if (isGenericDomain || sourceUrl === "#") {
-        sourceUrl = getFallbackSearchUrl(raw.title || query, raw.company || "", source);
+        sourceUrl = getFallbackSearchUrl(raw.title || q, raw.company || "", source);
       }
 
       return {
@@ -205,6 +213,7 @@ export async function searchJobsWithAI(filters?: {
         sourceUrl: sourceUrl,
         title: raw.title || "Unknown Title",
         company: raw.company || "Unknown Company",
+        industry: raw.industry,
         location: raw.location || location,
         description: raw.description || "No description provided.",
         currency: "AED",
