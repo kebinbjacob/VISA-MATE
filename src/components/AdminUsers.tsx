@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { UserProfile } from "../types";
-import { Search, Shield, User, Edit2, Plus, X } from "lucide-react";
+import { Search, Shield, User, Edit2, Plus, X, Mail, Ban, CheckCircle } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { getOrCreateUserProfile } from "../services/userService";
 import { createClient } from "@supabase/supabase-js";
@@ -15,6 +15,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newUserName, setNewUserName] = useState("");
@@ -22,6 +23,12 @@ export default function AdminUsers() {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState("user");
   const [isCreating, setIsCreating] = useState(false);
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSubscriptionTier, setEditSubscriptionTier] = useState<"free" | "premium">("free");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -53,6 +60,7 @@ export default function AdminUsers() {
         name: u.name,
         email: u.email,
         role: u.role,
+        status: u.status || 'active',
         subscriptionTier: u.subscription_tier,
         createdAt: u.created_at,
         updatedAt: u.updated_at,
@@ -84,6 +92,34 @@ export default function AdminUsers() {
     }
   };
 
+  const handleStatusChange = async (userId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ status: newStatus })
+        .eq('id', userId);
+        
+      if (error) throw error;
+      
+      setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus as any } : u));
+      toast.success(`User ${newStatus === 'suspended' ? 'suspended' : 'activated'} successfully`);
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      toast.error(`Failed to update user status: ${error.message || 'Unknown error'}`);
+    }
+  };
+
+  const handleResetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      toast.success(`Password reset email sent to ${email}`);
+    } catch (error: any) {
+      console.error("Error sending reset email:", error);
+      toast.error(`Failed to send reset email: ${error.message}`);
+    }
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsCreating(true);
@@ -110,16 +146,14 @@ export default function AdminUsers() {
 
       if (authData.user) {
         // 2. Update the user's role in the public.users table
-        // Note: The public.users record is created automatically by a trigger in Supabase
-        // We just need to update it with the name and role.
-        // We might need to wait a second for the trigger to fire
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         const { error: updateError } = await supabase
           .from('users')
           .update({ 
             name: newUserName,
-            role: newUserRole 
+            role: newUserRole,
+            status: 'active'
           })
           .eq('id', authData.user.id);
           
@@ -132,6 +166,7 @@ export default function AdminUsers() {
         setNewUserEmail("");
         setNewUserPassword("");
         setNewUserRole("user");
+        toast.success("User created successfully");
       }
     } catch (error: any) {
       console.error("Error creating user:", error);
@@ -140,6 +175,49 @@ export default function AdminUsers() {
       setIsCreating(false);
     }
   };
+
+  const openEditModal = (u: UserProfile) => {
+    setEditingUser(u);
+    setEditName(u.name || "");
+    setEditSubscriptionTier(u.subscriptionTier || "free");
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setIsUpdating(true);
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          name: editName,
+          subscription_tier: editSubscriptionTier
+        })
+        .eq('id', editingUser.id);
+        
+      if (error) throw error;
+      
+      setUsers(users.map(u => u.id === editingUser.id ? { ...u, name: editName, subscriptionTier: editSubscriptionTier } : u));
+      toast.success("User updated successfully");
+      setIsEditModalOpen(false);
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      toast.error(`Failed to update user: ${error.message}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery) return users;
+    const lowerQuery = searchQuery.toLowerCase();
+    return users.filter(u => 
+      (u.name && u.name.toLowerCase().includes(lowerQuery)) ||
+      (u.email && u.email.toLowerCase().includes(lowerQuery))
+    );
+  }, [users, searchQuery]);
 
   if (profileLoading) {
     return <div className="p-8 text-center text-gray-500">Loading...</div>;
@@ -154,7 +232,7 @@ export default function AdminUsers() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-500 text-sm">Manage user accounts and roles.</p>
+          <p className="text-gray-500 text-sm">Manage user accounts, roles, and statuses.</p>
         </div>
         <button 
           onClick={() => setIsCreateModalOpen(true)}
@@ -171,6 +249,8 @@ export default function AdminUsers() {
             <Search className="w-5 h-5 absolute left-3 top-2.5 text-gray-400" />
             <input 
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search users by name or email..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
             />
@@ -183,7 +263,7 @@ export default function AdminUsers() {
               <tr className="bg-gray-50 border-b border-gray-200 text-sm text-gray-500">
                 <th className="p-4 font-medium">User</th>
                 <th className="p-4 font-medium">Email</th>
-                <th className="p-4 font-medium">Joined Date</th>
+                <th className="p-4 font-medium">Status</th>
                 <th className="p-4 font-medium">Role</th>
                 <th className="p-4 font-medium text-right">Actions</th>
               </tr>
@@ -228,24 +308,31 @@ CREATE POLICY "Super Admins can delete users" ON public.users FOR DELETE USING (
                     )}
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-gray-500">No users found.</td>
                 </tr>
               ) : (
-                users.map((u) => (
-                  <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                filteredUsers.map((u) => (
+                  <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${u.status === 'suspended' ? 'opacity-60' : ''}`}>
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                          <User className="w-4 h-4" />
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${u.status === 'suspended' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                          {u.status === 'suspended' ? <Ban className="w-4 h-4" /> : <User className="w-4 h-4" />}
                         </div>
-                        <span className="font-medium text-gray-900">{u.name || 'Unknown'}</span>
+                        <div>
+                          <span className="font-medium text-gray-900 block">{u.name || 'Unknown'}</span>
+                          <span className="text-xs text-gray-500 capitalize">{u.subscriptionTier} Tier</span>
+                        </div>
                       </div>
                     </td>
                     <td className="p-4 text-gray-600">{u.email}</td>
-                    <td className="p-4 text-gray-600">
-                      {new Date(u.createdAt).toLocaleDateString()}
+                    <td className="p-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                        u.status === 'suspended' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}>
+                        {u.status === 'suspended' ? 'Suspended' : 'Active'}
+                      </span>
                     </td>
                     <td className="p-4">
                       <select 
@@ -267,7 +354,29 @@ CREATE POLICY "Super Admins can delete users" ON public.users FOR DELETE USING (
                       </select>
                     </td>
                     <td className="p-4 flex justify-end gap-2">
-                      <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
+                      <button 
+                        onClick={() => handleResetPassword(u.email)}
+                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
+                        title="Send Password Reset Email"
+                      >
+                        <Mail className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleStatusChange(u.id, u.status === 'suspended' ? 'active' : 'suspended')}
+                        className={`p-2 transition-colors rounded-lg ${
+                          u.status === 'suspended' 
+                            ? 'text-emerald-500 hover:bg-emerald-50 hover:text-emerald-600' 
+                            : 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+                        }`}
+                        title={u.status === 'suspended' ? 'Activate User' : 'Suspend User'}
+                      >
+                        {u.status === 'suspended' ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                      </button>
+                      <button 
+                        onClick={() => openEditModal(u)}
+                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
+                        title="Edit User"
+                      >
                         <Edit2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -278,6 +387,76 @@ CREATE POLICY "Super Admins can delete users" ON public.users FOR DELETE USING (
           </table>
         </div>
       </div>
+
+      {/* Edit User Modal */}
+      {isEditModalOpen && editingUser && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900">Edit User Details</h3>
+              <button 
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpdateUser} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input 
+                  type="text" 
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address (Read-only)</label>
+                <input 
+                  type="email" 
+                  disabled
+                  value={editingUser.email}
+                  className="w-full px-4 py-2 border border-gray-200 bg-gray-50 rounded-xl text-gray-500 outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Email changes require user verification.</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subscription Tier</label>
+                <select 
+                  value={editSubscriptionTier}
+                  onChange={(e) => setEditSubscriptionTier(e.target.value as "free" | "premium")}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="free">Free</option>
+                  <option value="premium">Premium</option>
+                </select>
+              </div>
+              
+              <div className="pt-4 flex justify-end gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isUpdating}
+                  className="px-6 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isUpdating ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Create User Modal */}
       {isCreateModalOpen && (

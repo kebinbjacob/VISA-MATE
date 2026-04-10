@@ -103,6 +103,7 @@ export interface UserProfile {
   cvData?: CVData;
   subscriptionTier: "free" | "premium";
   role?: "super_admin" | "admin" | "publisher" | "editor" | "user";
+  status?: "active" | "suspended";
   createdAt: string;
   updatedAt: string;
 }

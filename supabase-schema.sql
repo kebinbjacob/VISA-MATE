@@ -14,6 +14,7 @@ CREATE TABLE public.users (
   nationality TEXT,
   visa_status TEXT,
   role TEXT DEFAULT 'user',
+  status TEXT DEFAULT 'active',
   subscription_tier TEXT DEFAULT 'free',
   cv_data JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL

@@ -83,6 +83,50 @@ The platform includes a dedicated Admin panel for managing the ecosystem:
 
 ---
 
+## 🏗️ System Architecture
+
+The application follows a modern Serverless Single Page Application (SPA) architecture, utilizing a Backend-as-a-Service (BaaS) for data and authentication, and direct client-to-API communication for AI features.
+
+### High-Level Architecture
+
+1. **Client Tier (Frontend)**
+   * **Framework:** React 18 (SPA) built with Vite.
+   * **Routing:** Client-side routing via `react-router-dom` with protected routes (`<Auth />` wrapper) and role-based access control (`<AdminLayout />`).
+   * **State Management:** React Hooks (`useState`, `useEffect`) and Context API (`AuthProvider` for global user state).
+   * **UI Components:** Modular component architecture with Tailwind CSS for utility-first styling and `lucide-react` for iconography.
+
+2. **Backend & Data Tier (Supabase)**
+   * **Authentication:** Supabase Auth handles user registration, login, and session management.
+   * **Database:** PostgreSQL database managed by Supabase.
+   * **Storage:** Supabase Storage buckets for securely storing user documents (CVs, Passports, Visas).
+   * **Security:** Row Level Security (RLS) policies enforce data isolation, ensuring users can only access their own data and admins have elevated privileges.
+   * **Triggers:** PostgreSQL triggers automatically synchronize the `auth.users` table with the public `users` profile table upon registration.
+
+3. **AI Integration Tier (Google Gemini)**
+   * **Direct API Integration:** The client directly communicates with the Google Gemini API (`@google/genai`) using the `gemini-3-flash-preview` model.
+   * **Capabilities:** 
+     * **Vision:** Parsing job details from uploaded screenshots.
+     * **NLP:** Analyzing CVs for ATS compatibility, rewriting job descriptions, and detecting scam patterns in text.
+     * **Search:** Utilizing Gemini's grounding/search capabilities to scour the web for live job postings.
+
+### Data Models (PostgreSQL Schema)
+
+* **`users`**: Extended user profiles (role, title, location, preferences) linked to Supabase Auth.
+* **`jobs`**: Global job postings available on the platform (managed by admins or AI).
+* **`applications`**: User-specific job tracking records linking a user to a job with a specific status (saved, applied, interview, offer, rejected).
+* **`documents`**: Metadata for files stored in Supabase Storage (type, size, URL).
+* **`scam_reports`**: User-submitted texts analyzed by AI, storing the risk score, verdict, and AI reasoning.
+* **`cv_reports`**: Historical records of AI CV analyses, storing ATS scores and feedback.
+* **`platform_content`**: Dynamic content blocks (FAQs, guides) managed by admins.
+
+### Security & Data Flow
+
+1. **Authentication Flow:** User authenticates via Supabase -> JWT token is stored locally -> Token is attached to all subsequent database/storage requests.
+2. **Authorization:** Supabase RLS policies intercept database queries. For example, `SELECT * FROM applications` automatically filters to only return rows where `user_id = auth.uid()`.
+3. **AI Processing:** Sensitive data (like CV text or scam emails) is sent securely to the Gemini API for processing. The results are then stored in the user's private Supabase records.
+
+---
+
 ## 🚀 Setup & Installation
 
 1. **Clone the repository**
