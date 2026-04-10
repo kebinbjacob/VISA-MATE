@@ -97,14 +97,24 @@ export default function AdminJobs() {
     setScanSuccess(false);
     
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = (reader.result as string).split(',')[1];
-        const mimeType = file.type;
+      const base64String = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result.split(',')[1]);
+          } else {
+            reject(new Error("Failed to read file"));
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-        // @ts-ignore
-        const apiKey = process.env.GEMINI_API_KEY;
-        const ai = new GoogleGenAI({ apiKey });
+      const mimeType = file.type;
+
+      // @ts-ignore
+      const apiKey = process.env.GEMINI_API_KEY;
+      const ai = new GoogleGenAI({ apiKey });
 
         const prompt = `Analyze this job posting image and extract ALL job listings present. Return a strict JSON ARRAY of objects. Each object MUST have the following keys:
         - title (string)
@@ -146,8 +156,6 @@ export default function AdminJobs() {
         
         setScanSuccess(true);
         setTimeout(() => setScanSuccess(false), 3000);
-      };
-      reader.readAsDataURL(file);
     } catch (error) {
       console.error("Error scanning image:", error);
       alert("Failed to scan image. Please try again or enter details manually.");

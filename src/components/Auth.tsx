@@ -70,6 +70,8 @@ export default function Auth() {
           // If email confirmation is required, data.session will be null
           if (!data.session) {
             setMessage("Registration successful! Please check your email to confirm your account.");
+            setIsSignUp(false); // Switch to login view
+            setPassword(""); // Clear password for security
           } else {
             await getOrCreateUserProfile(data.user);
           }
