@@ -4,6 +4,7 @@ import { useAuth } from "./AuthProvider";
 import { addCVReport, getUserCVReports, CVReport } from "../services/cvService";
 import { formatDate } from "../lib/utils";
 import { GoogleGenAI, Type } from "@google/genai";
+import toast from "react-hot-toast";
 
 export default function CVAnalysis() {
   const { user } = useAuth();
@@ -160,7 +161,7 @@ export default function CVAnalysis() {
       setShowResults(true);
     } catch (error) {
       console.error("Analysis failed:", error);
-      alert("Failed to analyze CV. Please try again.");
+      toast.error("Failed to analyze CV. Please try again.");
       setIsAnalyzing(false);
     }
   };

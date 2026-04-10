@@ -203,7 +203,7 @@ export async function searchJobsWithAI(filters?: {
                              sourceUrl.endsWith(".ae/");
       
       if (isGenericDomain || sourceUrl === "#") {
-        sourceUrl = getFallbackSearchUrl(raw.title || q, raw.company || "", source);
+        sourceUrl = getFallbackSearchUrl(raw.title || query, raw.company || "", source);
       }
 
       return {

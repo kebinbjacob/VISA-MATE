@@ -4,6 +4,7 @@ import { useAuth } from "./AuthProvider";
 import { getUserDocuments, addDocument, deleteDocument, uploadDocumentFile } from "../services/documentService";
 import { Document } from "../types";
 import { formatDate } from "../lib/utils";
+import toast from "react-hot-toast";
 
 type VaultFile = {
   id: string;
@@ -105,7 +106,7 @@ export default function DocumentVault() {
         if (error.code === 'storage/retry-limit-exceeded' || error.message?.includes('retry-limit-exceeded')) {
           setStorageError(true);
         } else {
-          alert(error.message + "\n\nPlease run the provided SQL in your Supabase SQL Editor to fix this.");
+          toast.error(error.message + "\n\nPlease run the provided SQL in your Supabase SQL Editor to fix this.");
         }
       } finally {
         setUploading(false);
@@ -150,7 +151,7 @@ export default function DocumentVault() {
     if (file.url) {
       window.open(file.url, '_blank');
     } else {
-      alert(`Viewing ${file.name} is not supported in this demo.`);
+      toast.error(`Viewing ${file.name} is not supported in this demo.`);
     }
   };
 
@@ -164,7 +165,7 @@ export default function DocumentVault() {
       a.click();
       document.body.removeChild(a);
     } else {
-      alert(`Downloading ${file.name} is not supported in this demo.`);
+      toast.error(`Downloading ${file.name} is not supported in this demo.`);
     }
   };
 

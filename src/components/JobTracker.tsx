@@ -5,6 +5,8 @@ import { Application, ApplicationStatus, Job } from "../types";
 import { Briefcase, MapPin, Globe, Clock, Trash2, ExternalLink, GripVertical, Plus, X } from "lucide-react";
 import { formatCurrency } from "../lib/utils";
 import { DndContext, DragEndEvent, closestCorners, useDraggable, useDroppable } from "@dnd-kit/core";
+import toast from "react-hot-toast";
+import ConfirmModal from "./ui/ConfirmModal";
 
 const STATUS_COLORS: Record<ApplicationStatus, { bg: string, text: string, border: string, header: string }> = {
   saved: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200", header: "bg-gray-200" },
@@ -135,6 +137,7 @@ export default function JobTracker() {
   const [newJobSalaryMax, setNewJobSalaryMax] = useState("");
   const [newJobUrl, setNewJobUrl] = useState("");
   const [newJobStatus, setNewJobStatus] = useState<ApplicationStatus>("saved");
+  const [appToDelete, setAppToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -173,8 +176,10 @@ export default function JobTracker() {
 
     try {
       await updateApplicationStatus(appId, newStatus);
+      toast.success("Status updated");
     } catch (error) {
       console.error("Failed to update status:", error);
+      toast.error("Failed to update status");
       // Revert on failure
       setApplications(prev => prev.map(app => 
         app.id === appId ? { ...app, status: currentStatus } : app
@@ -182,13 +187,17 @@ export default function JobTracker() {
     }
   };
 
-  const handleDelete = async (appId: string) => {
-    if (!window.confirm("Are you sure you want to remove this job from your tracker?")) return;
+  const handleDelete = async () => {
+    if (!appToDelete) return;
     try {
-      await deleteApplication(appId);
-      setApplications(prev => prev.filter(app => app.id !== appId));
+      await deleteApplication(appToDelete);
+      setApplications(prev => prev.filter(app => app.id !== appToDelete));
+      toast.success("Job removed from tracker");
     } catch (error) {
       console.error("Failed to delete application:", error);
+      toast.error("Failed to remove job");
+    } finally {
+      setAppToDelete(null);
     }
   };
 
@@ -232,9 +241,10 @@ export default function JobTracker() {
       setNewJobUrl("");
       setNewJobStatus("saved");
       setIsAddModalOpen(false);
+      toast.success("Job added successfully");
     } catch (error) {
       console.error("Failed to add manual job:", error);
-      alert("Failed to add job. Please try again.");
+      toast.error("Failed to add job. Please try again.");
     } finally {
       setIsAdding(false);
     }
@@ -250,6 +260,15 @@ export default function JobTracker() {
 
   return (
     <div className="max-w-7xl mx-auto pb-12 h-full flex flex-col">
+      <ConfirmModal
+        isOpen={!!appToDelete}
+        title="Remove Job"
+        message="Are you sure you want to remove this job from your tracker? This action cannot be undone."
+        confirmText="Remove"
+        onConfirm={handleDelete}
+        onCancel={() => setAppToDelete(null)}
+        type="danger"
+      />
       <div className="mb-8 shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">
@@ -277,7 +296,7 @@ export default function JobTracker() {
                 status={status}
                 title={STATUS_LABELS[status]}
                 applications={applications.filter(a => a.status === status)}
-                onDelete={handleDelete}
+                onDelete={(id) => setAppToDelete(id)}
               />
             ))}
           </DndContext>

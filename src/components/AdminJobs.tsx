@@ -4,6 +4,8 @@ import { Job, JobType, ExperienceLevel } from "../types";
 import { Plus, Search, Edit2, Trash2, UploadCloud, Loader2, Image as ImageIcon, CheckCircle, Sparkles, Globe, X } from "lucide-react";
 import { GoogleGenAI } from "@google/genai";
 import { searchJobsWithAI, enhanceJobDescription } from "../services/jobService";
+import toast from "react-hot-toast";
+import ConfirmModal from "./ui/ConfirmModal";
 
 export default function AdminJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -22,6 +24,8 @@ export default function AdminJobs() {
   const [aiSearchCompanyCulture, setAiSearchCompanyCulture] = useState("");
   const [isAiSearching, setIsAiSearching] = useState(false);
   const [aiSearchResults, setAiSearchResults] = useState<Job[]>([]);
+
+  const [jobToDelete, setJobToDelete] = useState<string | null>(null);
 
   const [isScannedModalOpen, setIsScannedModalOpen] = useState(false);
   const [scannedJobs, setScannedJobs] = useState<Partial<Job>[]>([]);
@@ -158,7 +162,7 @@ export default function AdminJobs() {
         setTimeout(() => setScanSuccess(false), 3000);
     } catch (error) {
       console.error("Error scanning image:", error);
-      alert("Failed to scan image. Please try again or enter details manually.");
+      toast.error("Failed to scan image. Please try again or enter details manually.");
     } finally {
       setIsScanning(false);
       // Reset file input
@@ -189,7 +193,7 @@ export default function AdminJobs() {
   const handleSaveScannedJobs = async () => {
     const jobsToSave = scannedJobs.filter((_, i) => selectedScannedJobs.has(i));
     if (jobsToSave.length === 0) {
-      alert("No jobs selected to save.");
+      toast.error("No jobs selected to save.");
       return;
     }
 
@@ -217,12 +221,12 @@ export default function AdminJobs() {
       const { error } = await supabase.from('jobs').insert(formattedJobs);
       if (error) throw error;
 
-      alert(`Successfully added ${formattedJobs.length} jobs!`);
+      toast.success(`Successfully added ${formattedJobs.length} jobs!`);
       setIsScannedModalOpen(false);
       fetchJobs();
     } catch (error: any) {
       console.error("Error saving scanned jobs:", error);
-      alert(`Failed to save jobs: ${error.message}`);
+      toast.error(`Failed to save jobs: ${error.message}`);
     }
   };
 
@@ -256,7 +260,7 @@ export default function AdminJobs() {
           .update(jobData)
           .eq('id', editingJobId);
         if (error) throw error;
-        alert("Job updated successfully!");
+        toast.success("Job updated successfully!");
       } else {
         const { error } = await supabase
           .from('jobs')
@@ -266,7 +270,7 @@ export default function AdminJobs() {
             posted_at: new Date().toISOString(),
           }]);
         if (error) throw error;
-        alert("Job saved successfully!");
+        toast.success("Job saved successfully!");
       }
 
       setIsModalOpen(false);
@@ -288,7 +292,7 @@ export default function AdminJobs() {
       fetchJobs();
     } catch (error: any) {
       console.error("Error saving job:", error);
-      alert(`Failed to save job: ${error.message}`);
+      toast.error(`Failed to save job: ${error.message}`);
     }
   };
 
@@ -300,7 +304,7 @@ export default function AdminJobs() {
       setFormData(prev => ({ ...prev, description: enhanced }));
     } catch (error) {
       console.error("Failed to enhance description:", error);
-      alert("Failed to enhance description.");
+      toast.error("Failed to enhance description.");
     } finally {
       setIsEnhancing(false);
     }
@@ -320,7 +324,7 @@ export default function AdminJobs() {
       setAiSearchResults(results);
     } catch (error) {
       console.error("AI Search failed:", error);
-      alert("AI Search failed.");
+      toast.error("AI Search failed.");
     } finally {
       setIsAiSearching(false);
     }
@@ -372,20 +376,32 @@ export default function AdminJobs() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteJob = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this job?")) return;
+  const handleDeleteJob = async () => {
+    if (!jobToDelete) return;
     try {
-      const { error } = await supabase.from('jobs').delete().eq('id', id);
+      const { error } = await supabase.from('jobs').delete().eq('id', jobToDelete);
       if (error) throw error;
-      setJobs(jobs.filter(j => j.id !== id));
+      setJobs(jobs.filter(j => j.id !== jobToDelete));
+      toast.success("Job deleted successfully");
     } catch (error: any) {
       console.error("Error deleting job:", error);
-      alert("Failed to delete job.");
+      toast.error("Failed to delete job.");
+    } finally {
+      setJobToDelete(null);
     }
   };
 
   return (
     <div className="space-y-6">
+      <ConfirmModal
+        isOpen={!!jobToDelete}
+        title="Delete Job"
+        message="Are you sure you want to delete this job posting? This action cannot be undone."
+        confirmText="Delete"
+        onConfirm={handleDeleteJob}
+        onCancel={() => setJobToDelete(null)}
+        type="danger"
+      />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Job Postings</h1>
@@ -484,7 +500,7 @@ export default function AdminJobs() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button 
-                        onClick={() => handleDeleteJob(job.id)}
+                        onClick={() => setJobToDelete(job.id)}
                         className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
                       >
                         <Trash2 className="w-4 h-4" />

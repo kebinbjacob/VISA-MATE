@@ -4,6 +4,7 @@ import { useAuth } from "./AuthProvider";
 import { addScamReport, getUserScamReports, ScamReport } from "../services/scamService";
 import { formatDate } from "../lib/utils";
 import { GoogleGenAI, Type } from "@google/genai";
+import toast from "react-hot-toast";
 
 export default function ScamDetector() {
   const { user } = useAuth();
@@ -122,7 +123,7 @@ export default function ScamDetector() {
       }
     } catch (error) {
       console.error("Analysis failed:", error);
-      alert("Failed to analyze text. Please try again.");
+      toast.error("Failed to analyze text. Please try again.");
     } finally {
       setIsAnalyzing(false);
     }

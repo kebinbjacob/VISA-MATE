@@ -6,6 +6,7 @@ import { Search, Shield, User, Edit2, Plus, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { getOrCreateUserProfile } from "../services/userService";
 import { createClient } from "@supabase/supabase-js";
+import toast from "react-hot-toast";
 
 export default function AdminUsers() {
   const { user } = useAuth();
@@ -76,9 +77,10 @@ export default function AdminUsers() {
       if (error) throw error;
       
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole as any } : u));
+      toast.success("User role updated successfully");
     } catch (error: any) {
       console.error("Error updating role:", error);
-      alert(`Failed to update user role: ${error.message || 'Unknown error'}`);
+      toast.error(`Failed to update user role: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -133,7 +135,7 @@ export default function AdminUsers() {
       }
     } catch (error: any) {
       console.error("Error creating user:", error);
-      alert(`Failed to create user: ${error.message}`);
+      toast.error(`Failed to create user: ${error.message}`);
     } finally {
       setIsCreating(false);
     }

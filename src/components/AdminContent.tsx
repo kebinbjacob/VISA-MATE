@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FileText, Save, Loader2, CheckCircle } from "lucide-react";
 import { supabase } from "../supabase";
+import toast from "react-hot-toast";
 
 interface ContentItem {
   id: string;
@@ -79,11 +80,12 @@ export default function AdminContent() {
       
       setSaveSuccess(true);
       fetchContent(); // Refresh list to get updated data
+      toast.success("Content saved successfully");
       
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error: any) {
       console.error("Error saving content:", error);
-      alert(`Failed to save: ${error.message}`);
+      toast.error(`Failed to save: ${error.message}`);
     } finally {
       setSaving(false);
     }

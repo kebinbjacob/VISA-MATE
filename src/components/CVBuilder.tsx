@@ -11,6 +11,7 @@ import {
   Edit3, Eye, CheckCircle2, Upload
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import toast from "react-hot-toast";
 
 export default function CVBuilder() {
   const { user } = useAuth();
@@ -130,7 +131,7 @@ export default function CVBuilder() {
   const handleEnhanceExperience = async (index: number) => {
     const exp = cvData.experience[index];
     if (!exp.description || !exp.position || !exp.company) {
-      alert("Please fill in Position, Company, and Description before enhancing.");
+      toast.error("Please fill in Position, Company, and Description before enhancing.");
       return;
     }
     
@@ -180,7 +181,7 @@ export default function CVBuilder() {
       reader.readAsDataURL(file);
     } catch (error) {
       console.error("Error extracting CV data:", error);
-      alert("Failed to extract CV data. Please try again or enter manually.");
+      toast.error("Failed to extract CV data. Please try again or enter manually.");
     } finally {
       setExtracting(false);
       if (fileInputRef.current) {
