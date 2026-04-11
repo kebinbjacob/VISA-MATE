@@ -203,6 +203,9 @@ CREATE POLICY "Admins can update messages" ON public.support_messages
     OR auth.uid() = user_id
   );
 
+-- Enable Realtime for support messages
+ALTER PUBLICATION supabase_realtime ADD TABLE public.support_messages;
+
 -- ==========================================
 -- Storage Policies
 -- ==========================================

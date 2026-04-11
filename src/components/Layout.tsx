@@ -4,6 +4,7 @@ import { useAuth } from "./AuthProvider";
 import { getOrCreateUserProfile } from "../services/userService";
 import { UserProfile } from "../types";
 import { supabase } from "../supabase";
+import toast from "react-hot-toast";
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -115,8 +116,37 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       )
       .subscribe();
 
+    // Listen for new support messages
+    const messageChannel = supabase
+      .channel('user-support-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_messages',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const data = payload.new as any;
+          if (data.sender_id !== user.id) {
+            toast('New message from Support', {
+              icon: '💬',
+              duration: 5000,
+              style: {
+                borderRadius: '10px',
+                background: '#333',
+                color: '#fff',
+              },
+            });
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(messageChannel);
     };
   }, [user]);
 

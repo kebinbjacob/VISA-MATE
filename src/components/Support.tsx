@@ -125,7 +125,10 @@ CREATE POLICY "Users can insert their own messages" ON public.support_messages
   FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
 CREATE POLICY "Admins can update messages" ON public.support_messages
-  FOR UPDATE USING (public.get_user_role() IN ('super_admin', 'admin', 'editor', 'publisher') OR auth.uid() = user_id);`}
+  FOR UPDATE USING (public.get_user_role() IN ('super_admin', 'admin', 'editor', 'publisher') OR auth.uid() = user_id);
+
+-- Enable Realtime for this table
+ALTER PUBLICATION supabase_realtime ADD TABLE public.support_messages;`}
               </pre>
             </div>
           </div>

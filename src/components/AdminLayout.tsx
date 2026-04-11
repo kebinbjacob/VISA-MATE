@@ -4,6 +4,7 @@ import { useAuth } from "./AuthProvider";
 import { getOrCreateUserProfile } from "../services/userService";
 import { UserProfile } from "../types";
 import { supabase } from "../supabase";
+import toast from "react-hot-toast";
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -50,6 +51,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }
     };
     fetchProfile();
+
+    // Listen for new support messages globally for admins
+    const messageChannel = supabase
+      .channel('admin-support-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_messages'
+        },
+        (payload) => {
+          const data = payload.new as any;
+          // If the message is from a user (not an admin sending a reply)
+          if (data.sender_id === data.user_id) {
+            toast('New support ticket message', {
+              icon: '📩',
+              duration: 5000,
+              style: {
+                borderRadius: '10px',
+                background: '#1e293b',
+                color: '#fff',
+              },
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messageChannel);
+    };
   }, [user]);
 
   if (loading) {
