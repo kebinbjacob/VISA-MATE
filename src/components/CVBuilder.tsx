@@ -118,11 +118,14 @@ export default function CVBuilder() {
   const handleEnhanceSummary = async () => {
     if (!cvData.summary || !profile) return;
     setEnhancing(true);
+    const toastId = toast.loading("Enhancing summary with AI...");
     try {
       const enhanced = await enhanceSummary(cvData.summary, profile.headline || "");
       setCvData(prev => ({ ...prev, summary: enhanced }));
+      toast.success("Summary enhanced successfully!", { id: toastId });
     } catch (error) {
       console.error("Error enhancing summary:", error);
+      toast.error("Failed to enhance summary.", { id: toastId });
     } finally {
       setEnhancing(false);
     }
@@ -136,11 +139,14 @@ export default function CVBuilder() {
     }
     
     setEnhancingExp(prev => ({ ...prev, [index]: true }));
+    const toastId = toast.loading("Enhancing experience with AI...");
     try {
       const enhanced = await enhanceExperienceDescription(exp.description, exp.position, exp.company);
       updateExperience(index, "description", enhanced);
+      toast.success("Experience enhanced successfully!", { id: toastId });
     } catch (error) {
       console.error("Error enhancing experience:", error);
+      toast.error("Failed to enhance experience.", { id: toastId });
     } finally {
       setEnhancingExp(prev => ({ ...prev, [index]: false }));
     }
@@ -151,38 +157,49 @@ export default function CVBuilder() {
     if (!file) return;
 
     setExtracting(true);
+    const toastId = toast.loading("Extracting CV data with AI... This may take a few seconds.");
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64String = (reader.result as string).split(',')[1];
-        const extractedData = await extractCVData(base64String, file.type);
-        
-        setCvData(prev => ({
-          ...prev,
-          summary: extractedData.summary || prev.summary,
-          experience: extractedData.experience || prev.experience,
-          education: extractedData.education || prev.education,
-          skills: extractedData.skills || prev.skills,
-          languages: extractedData.languages || prev.languages,
-          noticePeriod: extractedData.noticePeriod || prev.noticePeriod,
-          linkedin: extractedData.linkedin || prev.linkedin,
-          github: extractedData.github || prev.github
-        }));
-        
-        // Explicitly trigger save after extraction
-        if (user) {
-           await saveCVData(user.id, {
-             ...cvData,
-             ...extractedData
-           });
-           setLastSaved(new Date());
+        try {
+          const base64String = (reader.result as string).split(',')[1];
+          const extractedData = await extractCVData(base64String, file.type);
+          
+          setCvData(prev => ({
+            ...prev,
+            summary: extractedData.summary || prev.summary,
+            experience: extractedData.experience || prev.experience,
+            education: extractedData.education || prev.education,
+            skills: extractedData.skills || prev.skills,
+            languages: extractedData.languages || prev.languages,
+            noticePeriod: extractedData.noticePeriod || prev.noticePeriod,
+            linkedin: extractedData.linkedin || prev.linkedin,
+            github: extractedData.github || prev.github
+          }));
+          
+          // Explicitly trigger save after extraction
+          if (user) {
+             await saveCVData(user.id, {
+               ...cvData,
+               ...extractedData
+             });
+             setLastSaved(new Date());
+          }
+          toast.success("CV data extracted successfully!", { id: toastId });
+        } catch (error) {
+          console.error("Error extracting CV data:", error);
+          toast.error("Failed to extract CV data. Please try again or enter manually.", { id: toastId });
+        } finally {
+          setExtracting(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
         }
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error("Error extracting CV data:", error);
-      toast.error("Failed to extract CV data. Please try again or enter manually.");
-    } finally {
+      console.error("Error reading file:", error);
+      toast.error("Failed to read file.", { id: toastId });
       setExtracting(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';

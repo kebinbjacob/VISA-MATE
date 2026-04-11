@@ -123,6 +123,7 @@ export default function AdminUsers() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsCreating(true);
+    const toastId = toast.loading("Creating user...");
     
     try {
       // Create a secondary client to avoid modifying the current session
@@ -166,11 +167,11 @@ export default function AdminUsers() {
         setNewUserEmail("");
         setNewUserPassword("");
         setNewUserRole("user");
-        toast.success("User created successfully");
+        toast.success("User created successfully", { id: toastId });
       }
     } catch (error: any) {
       console.error("Error creating user:", error);
-      toast.error(`Failed to create user: ${error.message}`);
+      toast.error(`Failed to create user: ${error.message}`, { id: toastId });
     } finally {
       setIsCreating(false);
     }
@@ -187,6 +188,7 @@ export default function AdminUsers() {
     e.preventDefault();
     if (!editingUser) return;
     setIsUpdating(true);
+    const toastId = toast.loading("Updating user...");
 
     try {
       const { error } = await supabase
@@ -200,11 +202,11 @@ export default function AdminUsers() {
       if (error) throw error;
       
       setUsers(users.map(u => u.id === editingUser.id ? { ...u, name: editName, subscriptionTier: editSubscriptionTier } : u));
-      toast.success("User updated successfully");
+      toast.success("User updated successfully", { id: toastId });
       setIsEditModalOpen(false);
     } catch (error: any) {
       console.error("Error updating user:", error);
-      toast.error(`Failed to update user: ${error.message}`);
+      toast.error(`Failed to update user: ${error.message}`, { id: toastId });
     } finally {
       setIsUpdating(false);
     }

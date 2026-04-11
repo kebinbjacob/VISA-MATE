@@ -28,7 +28,7 @@ const NAV_ITEMS = [
   { label: "Job Tracker", icon: ListTodo, path: "/dashboard/tracker" },
   { label: "CV Builder", icon: Edit3, path: "/dashboard/cv-builder" },
   { label: "Document Vault", icon: FolderOpen, path: "/dashboard/vault" },
-  { label: "Security Center", icon: ShieldCheck, path: "/dashboard/scam" },
+  { label: "Scam Finder", icon: ShieldCheck, path: "/dashboard/scam" },
   { label: "Profile", icon: Settings, path: "/dashboard/profile" },
 ];
 

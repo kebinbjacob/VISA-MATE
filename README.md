@@ -27,7 +27,7 @@ A comprehensive, AI-powered platform designed to assist expats in the UAE with t
 * **CV Builder**: Create a professional CV from scratch or extract data from an existing one.
 * **AI Bullet Enhancement**: Automatically improve your experience descriptions using Google Gemini AI to make them more impactful and metric-driven.
 
-### 6. 🛡️ Scam Shield (Fraud Detector)
+### 6. 🛡️ Scam Finder (Fraud Detector)
 * **AI Scam Detection**: Paste job offers, emails, or contract text to analyze them for predatory patterns common in UAE employment scams.
 * **Risk Scoring**: Receive a definitive verdict (Safe, Suspicious, Scam) along with a detailed breakdown of red flags (e.g., requests for visa fees, unofficial email addresses).
 * **Community Reporting**: Save scam reports to help build a safer community.

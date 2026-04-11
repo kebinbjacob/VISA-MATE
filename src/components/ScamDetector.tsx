@@ -33,6 +33,7 @@ export default function ScamDetector() {
   const handleAnalyze = async () => {
     if (!text.trim()) return;
     setIsAnalyzing(true);
+    const toastId = toast.loading("Analyzing offer for potential scams...");
     
     try {
       // @ts-ignore
@@ -121,9 +122,10 @@ export default function ScamDetector() {
           console.error("Failed to save scam report:", error);
         }
       }
+      toast.success("Analysis complete!", { id: toastId });
     } catch (error) {
       console.error("Analysis failed:", error);
-      toast.error("Failed to analyze text. Please try again.");
+      toast.error("Failed to analyze text. Please try again.", { id: toastId });
     } finally {
       setIsAnalyzing(false);
     }
@@ -141,7 +143,7 @@ export default function ScamDetector() {
   return (
     <div className="max-w-6xl mx-auto pb-12">
       <div className="mb-10">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">Scam Shield</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">Scam Finder</h1>
         <p className="text-gray-600 max-w-2xl text-lg">
           Detect fraudulent job offers before you commit. Our AI-powered analyzer identifies predatory patterns in UAE-based employment contracts.
         </p>

@@ -77,6 +77,7 @@ export default function DocumentVault() {
       const sizeStr = (uploadedFile.size / (1024 * 1024)).toFixed(1) + ' MB';
       
       setUploading(true);
+      const toastId = toast.loading(`Uploading ${uploadedFile.name}...`);
       try {
         let uploadResult;
         try {
@@ -101,12 +102,14 @@ export default function DocumentVault() {
         }
         
         loadDocuments();
+        toast.success("Document uploaded successfully!", { id: toastId });
       } catch (error: any) {
         console.error("Failed to upload document:", error);
         if (error.code === 'storage/retry-limit-exceeded' || error.message?.includes('retry-limit-exceeded')) {
           setStorageError(true);
+          toast.dismiss(toastId);
         } else {
-          toast.error(error.message + "\n\nPlease run the provided SQL in your Supabase SQL Editor to fix this.");
+          toast.error(error.message + "\n\nPlease run the provided SQL in your Supabase SQL Editor to fix this.", { id: toastId });
         }
       } finally {
         setUploading(false);
@@ -120,6 +123,7 @@ export default function DocumentVault() {
   const handleCreateFolder = async () => {
     if (!user || !newFolderName || newFolderName.trim() === "") return;
 
+    const toastId = toast.loading("Creating folder...");
     try {
       await addDocument(user.id, {
         name: newFolderName.trim(),
@@ -130,9 +134,10 @@ export default function DocumentVault() {
       setNewFolderName("");
       setIsCreateFolderModalOpen(false);
       loadDocuments();
+      toast.success("Folder created successfully!", { id: toastId });
     } catch (error) {
       console.error("Failed to create folder:", error);
-      // Fallback error handling, ideally use a toast notification
+      toast.error("Failed to create folder.", { id: toastId });
     }
   };
 

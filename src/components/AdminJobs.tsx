@@ -99,6 +99,7 @@ export default function AdminJobs() {
 
     setIsScanning(true);
     setScanSuccess(false);
+    const toastId = toast.loading("Scanning screenshot with AI...");
     
     try {
       const base64String = await new Promise<string>((resolve, reject) => {
@@ -160,9 +161,10 @@ export default function AdminJobs() {
         
         setScanSuccess(true);
         setTimeout(() => setScanSuccess(false), 3000);
+        toast.success("Screenshot scanned successfully!", { id: toastId });
     } catch (error) {
       console.error("Error scanning image:", error);
-      toast.error("Failed to scan image. Please try again or enter details manually.");
+      toast.error("Failed to scan image. Please try again or enter details manually.", { id: toastId });
     } finally {
       setIsScanning(false);
       // Reset file input
@@ -299,12 +301,14 @@ export default function AdminJobs() {
   const handleEnhanceDescription = async () => {
     if (!formData.description) return;
     setIsEnhancing(true);
+    const toastId = toast.loading("Enhancing description with AI...");
     try {
       const enhanced = await enhanceJobDescription(formData.description);
       setFormData(prev => ({ ...prev, description: enhanced }));
+      toast.success("Description enhanced successfully!", { id: toastId });
     } catch (error) {
       console.error("Failed to enhance description:", error);
-      toast.error("Failed to enhance description.");
+      toast.error("Failed to enhance description.", { id: toastId });
     } finally {
       setIsEnhancing(false);
     }
@@ -313,6 +317,7 @@ export default function AdminJobs() {
   const handleAiSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAiSearching(true);
+    const toastId = toast.loading("Searching for jobs with AI...");
     try {
       const results = await searchJobsWithAI({ 
         q: aiSearchQuery, 
@@ -322,9 +327,10 @@ export default function AdminJobs() {
         companyCulture: aiSearchCompanyCulture ? aiSearchCompanyCulture.split(',').map(s => s.trim()) : undefined
       });
       setAiSearchResults(results);
+      toast.success(`Found ${results.length} jobs!`, { id: toastId });
     } catch (error) {
       console.error("AI Search failed:", error);
-      toast.error("AI Search failed.");
+      toast.error("AI Search failed.", { id: toastId });
     } finally {
       setIsAiSearching(false);
     }

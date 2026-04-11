@@ -205,6 +205,7 @@ export default function JobTracker() {
     e.preventDefault();
     if (!user) return;
     setIsAdding(true);
+    const toastId = toast.loading("Adding job...");
 
     try {
       const manualJob: Job = {
@@ -241,10 +242,10 @@ export default function JobTracker() {
       setNewJobUrl("");
       setNewJobStatus("saved");
       setIsAddModalOpen(false);
-      toast.success("Job added successfully");
+      toast.success("Job added successfully", { id: toastId });
     } catch (error) {
       console.error("Failed to add manual job:", error);
-      toast.error("Failed to add job. Please try again.");
+      toast.error("Failed to add job. Please try again.", { id: toastId });
     } finally {
       setIsAdding(false);
     }
