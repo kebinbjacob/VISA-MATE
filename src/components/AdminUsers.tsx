@@ -67,6 +67,7 @@ export default function AdminUsers() {
         role: u.role,
         status: u.status || 'active',
         subscriptionTier: u.subscription_tier,
+        bonusCredits: u.bonus_credits || 0,
         createdAt: u.created_at,
         updatedAt: u.updated_at,
       })) as UserProfile[];

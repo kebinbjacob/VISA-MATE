@@ -39,6 +39,9 @@ export default function CVBuilder() {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoad = useRef(true);
 
+  const hasCredits = profile ? (profile.dailyCreditsUsed < 5 || profile.bonusCredits > 0) : false;
+  const remainingCredits = profile ? (5 - profile.dailyCreditsUsed) + profile.bonusCredits : 0;
+
   const sections = [
     { id: "ai-prompt", label: "Build with AI", icon: MessageSquare },
     { id: "personal", label: "Personal Info", icon: User },
@@ -384,7 +387,20 @@ export default function CVBuilder() {
           <p className="text-gray-600">Create a professional, ATS-friendly CV tailored for the UAE market.</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {profile && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg mr-2">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span className="text-sm font-bold text-indigo-900">
+                  {remainingCredits} AI Credit{remainingCredits !== 1 ? 's' : ''}
+                </span>
+                {profile.subscriptionTier === 'premium' && (
+                  <span className="ml-1 text-xs font-bold bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full">
+                    Premium
+                  </span>
+                )}
+              </div>
+            )}
           {lastSaved && (
             <div className="text-xs text-gray-500 flex items-center gap-1 mr-2">
               {saving ? (
@@ -404,7 +420,7 @@ export default function CVBuilder() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={extracting}
+              disabled={extracting || !hasCredits}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 disabled:opacity-50"
             >
               {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -508,10 +524,13 @@ export default function CVBuilder() {
                           className="w-full px-4 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all resize-none leading-relaxed"
                           placeholder="Describe your experience and target role..."
                         />
-                        <div className="flex justify-end">
+                        <div className="flex justify-end items-center gap-4">
+                          {!hasCredits && (
+                            <span className="text-sm text-red-500 font-medium">No AI credits remaining.</span>
+                          )}
                           <button
                             onClick={handleBuildWithPrompt}
-                            disabled={buildingWithPrompt || !aiPrompt.trim()}
+                            disabled={buildingWithPrompt || !aiPrompt.trim() || !hasCredits}
                             className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50"
                           >
                             {buildingWithPrompt ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
@@ -634,14 +653,19 @@ export default function CVBuilder() {
                           </div>
                           <h2 className="text-2xl font-bold text-gray-900">Professional Summary</h2>
                         </div>
-                        <button
-                          onClick={handleEnhanceSummary}
-                          disabled={enhancing || !cvData.summary}
-                          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50"
-                        >
-                          {enhancing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                          AI Enhance
-                        </button>
+                        <div className="flex items-center gap-3">
+                          {!hasCredits && (
+                            <span className="text-sm text-red-500 font-medium hidden sm:inline">No AI credits remaining.</span>
+                          )}
+                          <button
+                            onClick={handleEnhanceSummary}
+                            disabled={enhancing || !cvData.summary || !hasCredits}
+                            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50"
+                          >
+                            {enhancing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                            AI Enhance
+                          </button>
+                        </div>
                       </div>
                       
                       <div className="space-y-2">
@@ -750,14 +774,19 @@ export default function CVBuilder() {
                               <div className="md:col-span-2 space-y-2">
                                 <div className="flex items-center justify-between">
                                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Achievements & Responsibilities</label>
-                                  <button
-                                    onClick={() => handleEnhanceExperience(index)}
-                                    disabled={enhancingExp[index] || !exp.description}
-                                    className="flex items-center gap-1.5 text-xs bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-1.5 rounded-lg font-bold hover:shadow-md transition-all disabled:opacity-50"
-                                  >
-                                    {enhancingExp[index] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                    AI Enhance
-                                  </button>
+                                  <div className="flex items-center gap-3">
+                                    {!hasCredits && (
+                                      <span className="text-xs text-red-500 font-medium hidden sm:inline">No AI credits.</span>
+                                    )}
+                                    <button
+                                      onClick={() => handleEnhanceExperience(index)}
+                                      disabled={enhancingExp[index] || !exp.description || !hasCredits}
+                                      className="flex items-center gap-1.5 text-xs bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-1.5 rounded-lg font-bold hover:shadow-md transition-all disabled:opacity-50"
+                                    >
+                                      {enhancingExp[index] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                      AI Enhance
+                                    </button>
+                                  </div>
                                 </div>
                                 <textarea
                                   value={exp.description}

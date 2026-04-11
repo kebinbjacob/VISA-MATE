@@ -139,7 +139,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-8 pb-4">
-          <h1 className="text-2xl font-bold text-blue-700 tracking-tight">VisaMate</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-blue-700 tracking-tight">VisaMate</h1>
+            {profile?.subscriptionTier === 'premium' && (
+              <span className="text-[10px] font-bold bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                Premium
+              </span>
+            )}
+          </div>
           <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mt-1">Expat Concierge</p>
         </div>
 
@@ -238,6 +245,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <LogOut className="w-5 h-5" />
               </button>
+              {profile?.subscriptionTier === 'premium' && (
+                <div className="hidden sm:flex items-center ml-2 px-3 py-1 bg-gradient-to-r from-amber-200 to-yellow-400 rounded-full shadow-sm border border-yellow-300">
+                  <span className="text-xs font-bold text-yellow-900 uppercase tracking-wider">Premium</span>
+                </div>
+              )}
               <Link to="/dashboard/profile" className="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 hover:ring-2 hover:ring-blue-500 transition-all ml-2" title={profile?.name || user?.user_metadata?.full_name || user?.email || "User"}>
                 <img src={profile?.photoUrl || user?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/notionists/svg?seed=${user?.id || 'Felix'}&backgroundColor=ffdfbf`} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </Link>
