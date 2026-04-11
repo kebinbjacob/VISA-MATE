@@ -16,12 +16,14 @@ import DocumentVault from "./components/DocumentVault";
 import Profile from "./components/Profile";
 import CVBuilder from "./components/CVBuilder";
 import Resources from "./components/Resources";
+import Support from "./components/Support";
 
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./components/AdminDashboard";
 import AdminJobs from "./components/AdminJobs";
 import AdminContent from "./components/AdminContent";
 import AdminUsers from "./components/AdminUsers";
+import AdminSupport from "./components/AdminSupport";
 
 const Billing = () => <h1 className="text-2xl font-bold">Subscription & Billing</h1>;
 
@@ -69,6 +71,7 @@ export default function App() {
         <Route path="/admin/jobs" element={<AdminLayout><AdminJobs /></AdminLayout>} />
         <Route path="/admin/content" element={<AdminLayout><AdminContent /></AdminLayout>} />
         <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+        <Route path="/admin/support" element={<AdminLayout><AdminSupport /></AdminLayout>} />
 
         {/* User Routes */}
         <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
@@ -79,6 +82,7 @@ export default function App() {
         <Route path="/dashboard/scam" element={<Layout><ScamDetector /></Layout>} />
         <Route path="/dashboard/vault" element={<Layout><DocumentVault /></Layout>} />
         <Route path="/dashboard/resources" element={<Layout><Resources /></Layout>} />
+        <Route path="/dashboard/support" element={<Layout><Support /></Layout>} />
         <Route path="/dashboard/profile" element={<Layout><Profile /></Layout>} />
         <Route path="/dashboard/cv-builder" element={<Layout><CVBuilder /></Layout>} />
         <Route path="/dashboard/billing" element={<Layout><Billing /></Layout>} />

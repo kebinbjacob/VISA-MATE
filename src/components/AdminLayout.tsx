@@ -13,7 +13,8 @@ import {
   Search,
   Bell,
   Settings,
-  Users
+  Users,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -22,6 +23,7 @@ const ADMIN_NAV_ITEMS = [
   { label: "Job Postings", icon: Briefcase, path: "/admin/jobs" },
   { label: "Content Management", icon: FileText, path: "/admin/content" },
   { label: "User Management", icon: Users, path: "/admin/users" },
+  { label: "Support Tickets", icon: MessageSquare, path: "/admin/support" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

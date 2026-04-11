@@ -110,6 +110,27 @@ CREATE TABLE public.scam_reports (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 8. Content Table (Dynamic Resources & Announcements)
+CREATE TABLE public.content (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  key TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 9. Support Messages Table (User & Admin Messenger)
+CREATE TABLE public.support_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- ==========================================
 -- Row Level Security (RLS) Policies
 -- ==========================================
@@ -120,6 +141,8 @@ ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cv_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scam_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.content ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
 
 -- Users can only read and update their own profile
 CREATE POLICY "Users can view their own profile" ON public.users FOR SELECT USING (auth.uid() = id);
@@ -157,6 +180,28 @@ CREATE POLICY "Users can manage their own cv reports" ON public.cv_reports FOR A
 
 -- Users can only manage their own scam reports
 CREATE POLICY "Users can manage their own scam reports" ON public.scam_reports FOR ALL USING (auth.uid() = user_id);
+
+-- Content Policies
+CREATE POLICY "Anyone can view active content" ON public.content FOR SELECT USING (is_active = true);
+CREATE POLICY "Admins can manage content" ON public.content FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('super_admin', 'admin', 'editor', 'publisher'))
+);
+
+-- Support Messages Policies
+CREATE POLICY "Users can view their own messages" ON public.support_messages
+  FOR SELECT USING (
+    auth.uid() = user_id OR 
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('super_admin', 'admin', 'editor', 'publisher'))
+  );
+
+CREATE POLICY "Users can insert their own messages" ON public.support_messages
+  FOR INSERT WITH CHECK (auth.uid() = sender_id);
+
+CREATE POLICY "Admins can update messages" ON public.support_messages
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('super_admin', 'admin', 'editor', 'publisher')) 
+    OR auth.uid() = user_id
+  );
 
 -- ==========================================
 -- Storage Policies

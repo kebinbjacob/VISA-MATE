@@ -17,7 +17,8 @@ import {
   HelpCircle,
   FolderOpen,
   Edit3,
-  ListTodo
+  ListTodo,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { label: "Document Vault", icon: FolderOpen, path: "/dashboard/vault" },
   { label: "Scam Finder", icon: ShieldCheck, path: "/dashboard/scam" },
   { label: "Resources", icon: HelpCircle, path: "/dashboard/resources" },
+  { label: "Support & Issues", icon: MessageSquare, path: "/dashboard/support" },
   { label: "Profile", icon: Settings, path: "/dashboard/profile" },
 ];
 
@@ -192,10 +194,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
 
           <div className="space-y-1">
-            <button className="flex items-center gap-4 px-4 py-3 w-full text-sm font-semibold text-gray-500 hover:bg-gray-100/50 hover:text-gray-900 rounded-xl transition-colors">
-              <HelpCircle className="w-5 h-5 text-gray-400" />
-              Support
-            </button>
+            <div className="px-4 py-2 mb-2 text-[11px] text-gray-400 font-medium border-b border-gray-100 pb-4">
+              Support Email: <a href="mailto:info@appmatixsolutions.com" className="text-blue-600 hover:underline">info@appmatixsolutions.com</a>
+            </div>
             <button 
               onClick={signOut}
               className="flex items-center gap-4 px-4 py-3 w-full text-sm font-semibold text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"
