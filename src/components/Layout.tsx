@@ -29,6 +29,7 @@ const NAV_ITEMS = [
   { label: "CV Builder", icon: Edit3, path: "/dashboard/cv-builder" },
   { label: "Document Vault", icon: FolderOpen, path: "/dashboard/vault" },
   { label: "Scam Finder", icon: ShieldCheck, path: "/dashboard/scam" },
+  { label: "Resources", icon: HelpCircle, path: "/dashboard/resources" },
   { label: "Profile", icon: Settings, path: "/dashboard/profile" },
 ];
 

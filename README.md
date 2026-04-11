@@ -1,154 +1,73 @@
-# UAE Expat Hub & Career Portal
+# VisaMate - Expat Concierge & Career Platform
 
-A comprehensive, AI-powered platform designed to assist expats in the UAE with their career journey, visa management, and document organization. Built with React, Tailwind CSS, Supabase, and Google Gemini AI.
+VisaMate is a comprehensive, AI-powered platform designed to help expats manage their visas, find vetted jobs, track applications, build professional CVs, and protect themselves from employment scams.
 
-## 🌟 Core Features
+## 🌟 Key Features
 
-### 1. 📊 Interactive Dashboard
-* **Overview Metrics**: Get a quick glance at your active job applications, document vault status, and visa validity.
-* **Quick Actions**: Fast access to essential tools like the CV Builder, Scam Detector, and Job Board.
+### For Users
+*   **🛂 Visa Tracker**: Keep track of your visa status, sponsor details, and expiry dates. Get a clear view of days remaining and compliance checklists.
+*   **💼 Job Board**: Browse curated, vetted job opportunities. Features an instant, client-side global search across job titles, descriptions, companies, and skills.
+*   **📊 Job Tracker**: A Kanban-style drag-and-drop board to manage your job applications across different stages (Saved, Applied, Interviewing, Offer, Rejected).
+*   **✨ AI CV Builder**: Build ATS-friendly CVs tailored for the UAE market. Use AI to generate summaries, enhance experience descriptions, or even extract data from old CVs. Includes a credit system and Premium tier badges.
+*   **🔍 CV Analyzer**: Upload your CV and get instant AI feedback on how to improve it for specific job roles.
+*   **📁 Document Vault**: Securely store, organize, and manage your important documents with full folder navigation support.
+*   **🛡️ Scam Detector**: Paste job offers or emails to get an instant AI analysis of potential red flags and fraud indicators.
+*   **📚 Resources & Guides**: Access dynamic, markdown-rendered guides, FAQs, and announcements.
 
-### 2. 🧳 Visa Dashboard
-* **Visa Tracking**: Monitor your UAE visa status, expiration dates, and renewal requirements.
-* **Guidance & Resources**: Access up-to-date information regarding UAE visa regulations, grace periods, and application processes.
+### For Administrators
+*   **👥 User Management**: View all users, change roles (User, Editor, Publisher, Admin, Super Admin), manage subscription tiers, allocate Bonus AI Credits, suspend accounts, and delete user data.
+*   **🏢 Job Management**: Add, edit, and verify job postings.
+*   **📝 Content Management**: Create and manage dynamic content blocks, announcements, and resource pages using Markdown.
 
-### 3. 💼 Smart Job Board
-* **Advanced Filtering**: Search for jobs by title, location, industry, job type (Full-time, Contract, etc.), and remote availability.
-* **AI Job Search**: Integrated AI search that scours the web for job postings matching your criteria and automatically parses them into the platform.
-* **Direct Apply**: Seamlessly apply to jobs and automatically add them to your Job Tracker.
+## 🛠️ Tech Stack
 
-### 4. 📌 Kanban Job Tracker
-* **Drag-and-Drop Interface**: Visually manage your job applications across different stages (Saved, Applied, Interviewing, Offer Received, Rejected).
-* **Manual Entry**: Add jobs manually with detailed information including salary ranges, company culture, and source URLs.
-* **Status Updates**: Easily update application statuses with real-time visual feedback.
+*   **Frontend**: React 18, TypeScript, Vite
+*   **Styling**: Tailwind CSS
+*   **Icons**: Lucide React
+*   **Animations**: Motion (Framer Motion)
+*   **Drag & Drop**: `@dnd-kit/core`
+*   **Backend & Auth**: Supabase (PostgreSQL, Authentication, Storage)
+*   **AI Integration**: Google Gemini API (`@google/genai`)
+*   **Markdown Rendering**: `react-markdown`
 
-### 5. 📄 AI-Powered CV Builder & Analyzer
-* **CV Analyzer**: Upload your existing CV (PDF/DOCX) and receive an AI-generated ATS (Applicant Tracking System) compatibility score, complete with actionable feedback tailored for the UAE market.
-* **CV Builder**: Create a professional CV from scratch or extract data from an existing one.
-* **AI Prompt Builder**: Generate a complete, professional CV structure simply by describing your experience and target role to the AI.
-* **AI Bullet Enhancement**: Automatically improve your experience descriptions using Google Gemini AI to make them more impactful and metric-driven.
-* **AI Credit System**: AI features consume credits. Free users receive 10 bonus credits and 5 daily credits. Premium users receive 50 bonus credits and 20 daily credits.
+## 🚀 Getting Started
 
-### 6. 🛡️ Scam Finder (Fraud Detector)
-* **AI Scam Detection**: Paste job offers, emails, or contract text to analyze them for predatory patterns common in UAE employment scams.
-* **Risk Scoring**: Receive a definitive verdict (Safe, Suspicious, Scam) along with a detailed breakdown of red flags (e.g., requests for visa fees, unofficial email addresses).
-* **Community Reporting**: Save scam reports to help build a safer community.
+### Prerequisites
+Ensure you have Node.js installed on your machine. You will also need a Supabase project and a Google Gemini API key.
 
-### 7. 📁 Secure Document Vault
-* **Cloud Storage**: Securely upload, store, and manage essential documents like your Passport, Emirates ID, Visa copies, and CVs.
-* **File & Folder Management**: Create folders, rename files/folders, and organize your documents efficiently.
-* **Storage Limits**: Free users have a 20MB storage limit, while Premium users enjoy up to 50MB. Individual files are capped at 3MB.
-* **Allowed File Types**: Only picture (.jpg, .jpeg, .png) and document (.pdf, .doc, .docx) files are permitted for security.
-* **Categorization**: Automatically categorizes files with visual icons for quick retrieval.
-* **File Actions**: View, download, rename, and delete files directly from the platform.
+### Environment Variables
+Create a `.env` file in the root directory and add the following variables:
 
-### 8. 👤 Profile Management
-* **Personal Details**: Manage your contact information, professional title, and location.
-* **Preferences**: Set your job search preferences and notification settings.
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+GEMINI_API_KEY=your_google_gemini_api_key
+```
 
----
+### Installation
 
-## 🔐 Admin Features
-
-The platform includes a dedicated Admin panel for managing the ecosystem:
-
-### 1. 📈 Admin Dashboard
-* **Platform Analytics**: View total users, active jobs, scam reports, and content metrics.
-
-### 2. 🛠️ Job Management
-* **CRUD Operations**: Add, edit, and delete job postings.
-* **AI Image Scanner**: Upload a screenshot of a job posting (e.g., from LinkedIn or a company website), and the AI will automatically extract the title, company, description, salary, and requirements to instantly create a structured job listing.
-* **AI Description Enhancement**: Automatically rewrite and format job descriptions for better clarity and appeal.
-
-### 3. 📝 Content Management
-* **Dynamic Content**: Manage platform content, FAQs, and resources dynamically without touching the codebase.
-
-### 4. 👥 User Management
-* **Role Assignment**: View all registered users and assign roles (Admin/User).
-* **Account Creation**: Manually create new user accounts.
-
----
-
-## 🎨 UI/UX Highlights
-* **Toast Notifications**: Non-blocking, elegant pop-up notifications for success and error messages using `react-hot-toast`.
-* **Confirmation Modals**: Secure, blocking modals for destructive actions (like deleting a job or document) to prevent accidental data loss.
-* **Responsive Design**: Fully optimized for desktop, tablet, and mobile devices using Tailwind CSS.
-* **Smooth Animations**: Fluid drag-and-drop interactions and page transitions.
-
----
-
-## 💻 Tech Stack
-
-* **Frontend**: React 18, React Router DOM, Vite
-* **Styling**: Tailwind CSS, Lucide React (Icons)
-* **Backend/Database**: Supabase (PostgreSQL, Auth, Storage)
-* **AI Integration**: Google Gemini API (`@google/genai`)
-* **Drag & Drop**: `@dnd-kit/core`
-* **Notifications**: `react-hot-toast`
-
----
-
-## 🏗️ System Architecture
-
-The application follows a modern Serverless Single Page Application (SPA) architecture, utilizing a Backend-as-a-Service (BaaS) for data and authentication, and direct client-to-API communication for AI features.
-
-### High-Level Architecture
-
-1. **Client Tier (Frontend)**
-   * **Framework:** React 18 (SPA) built with Vite.
-   * **Routing:** Client-side routing via `react-router-dom` with protected routes (`<Auth />` wrapper) and role-based access control (`<AdminLayout />`).
-   * **State Management:** React Hooks (`useState`, `useEffect`) and Context API (`AuthProvider` for global user state).
-   * **UI Components:** Modular component architecture with Tailwind CSS for utility-first styling and `lucide-react` for iconography.
-
-2. **Backend & Data Tier (Supabase)**
-   * **Authentication:** Supabase Auth handles user registration, login, and session management.
-   * **Database:** PostgreSQL database managed by Supabase.
-   * **Storage:** Supabase Storage buckets for securely storing user documents (CVs, Passports, Visas).
-   * **Security:** Row Level Security (RLS) policies enforce data isolation, ensuring users can only access their own data and admins have elevated privileges.
-   * **Triggers:** PostgreSQL triggers automatically synchronize the `auth.users` table with the public `users` profile table upon registration.
-
-3. **AI Integration Tier (Google Gemini)**
-   * **Direct API Integration:** The client directly communicates with the Google Gemini API (`@google/genai`) using the `gemini-3-flash-preview` model.
-   * **Capabilities:** 
-     * **Vision:** Parsing job details from uploaded screenshots.
-     * **NLP:** Analyzing CVs for ATS compatibility, rewriting job descriptions, and detecting scam patterns in text.
-     * **Search:** Utilizing Gemini's grounding/search capabilities to scour the web for live job postings.
-
-### Data Models (PostgreSQL Schema)
-
-* **`users`**: Extended user profiles (role, title, location, preferences) linked to Supabase Auth. Includes the AI Credit System tracking (`bonus_credits`, `daily_credits_used`, `last_credit_reset`).
-* **`jobs`**: Global job postings available on the platform (managed by admins or AI).
-* **`applications`**: User-specific job tracking records linking a user to a job with a specific status (saved, applied, interview, offer, rejected).
-* **`documents`**: Metadata for files stored in Supabase Storage (type, size, URL).
-* **`scam_reports`**: User-submitted texts analyzed by AI, storing the risk score, verdict, and AI reasoning.
-* **`cv_reports`**: Historical records of AI CV analyses, storing ATS scores and feedback.
-* **`platform_content`**: Dynamic content blocks (FAQs, guides) managed by admins.
-
-### Security & Data Flow
-
-1. **Authentication Flow:** User authenticates via Supabase -> JWT token is stored locally -> Token is attached to all subsequent database/storage requests.
-2. **Authorization:** Supabase RLS policies intercept database queries. For example, `SELECT * FROM applications` automatically filters to only return rows where `user_id = auth.uid()`.
-3. **AI Processing:** Sensitive data (like CV text or scam emails) is sent securely to the Gemini API for processing. The results are then stored in the user's private Supabase records.
-
----
-
-## 🚀 Setup & Installation
-
-1. **Clone the repository**
-2. **Install dependencies**:
+1. Clone the repository
+2. Install dependencies:
    ```bash
    npm install
    ```
-3. **Environment Variables**:
-   Create a `.env` file in the root directory and add the following:
-   ```env
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   GEMINI_API_KEY=your_google_gemini_api_key
-   ```
-4. **Database Setup**:
-   Run the provided `supabase-schema.sql` in your Supabase SQL Editor to set up the required tables, storage buckets, and Row Level Security (RLS) policies.
-5. **Start the development server**:
+3. Start the development server:
    ```bash
    npm run dev
    ```
+
+## 🗄️ Database Setup (Supabase)
+
+This project requires specific tables in Supabase:
+*   `users`: Extended user profiles, roles, subscription tiers, and AI credits.
+*   `jobs`: Job listings and metadata.
+*   `applications`: User job applications linked to jobs.
+*   `visas`: User visa records.
+*   `documents`: Metadata for files stored in Supabase Storage.
+*   `content`: Dynamic content blocks for the Resources page and announcements.
+
+*Note: Ensure Row Level Security (RLS) policies are correctly configured to prevent infinite recursion, especially on the `users` table for admin access.*
+
+## 📄 License
+
+Designed and Developed by Appmatix Solutions. All Rights Reserved.

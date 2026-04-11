@@ -15,6 +15,7 @@ import ScamDetector from "./components/ScamDetector";
 import DocumentVault from "./components/DocumentVault";
 import Profile from "./components/Profile";
 import CVBuilder from "./components/CVBuilder";
+import Resources from "./components/Resources";
 
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./components/AdminDashboard";
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="/dashboard/cv" element={<Layout><CVAnalysis /></Layout>} />
         <Route path="/dashboard/scam" element={<Layout><ScamDetector /></Layout>} />
         <Route path="/dashboard/vault" element={<Layout><DocumentVault /></Layout>} />
+        <Route path="/dashboard/resources" element={<Layout><Resources /></Layout>} />
         <Route path="/dashboard/profile" element={<Layout><Profile /></Layout>} />
         <Route path="/dashboard/cv-builder" element={<Layout><CVBuilder /></Layout>} />
         <Route path="/dashboard/billing" element={<Layout><Billing /></Layout>} />
