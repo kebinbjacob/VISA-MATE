@@ -13,9 +13,9 @@ export default function Jobs() {
   const [savedJobs, setSavedJobs] = useState<Map<string, string>>(new Map()); // jobId -> applicationId
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [locationQuery, setLocationQuery] = useState("");
   const [filters, setFilters] = useState({
-    q: "",
-    location: "",
     jobType: "" as JobType | "",
     experienceLevel: "" as ExperienceLevel | "",
     isRemote: false,
@@ -136,15 +136,39 @@ export default function Jobs() {
     loadJobs();
   };
 
-  // Local filtering for industries (since backend might not support it directly yet)
+  // Local filtering for search, location, and industries
   const displayedJobs = jobs.filter(job => {
-    if (selectedIndustries.length === 0) return true;
-    // Simple mock filter: if industry is selected, randomly assign some or check title
-    return selectedIndustries.some(ind => 
-      job.title.toLowerCase().includes(ind.toLowerCase()) || 
-      job.company.toLowerCase().includes(ind.toLowerCase()) ||
-      true // fallback to show something for demo
-    );
+    // 1. Industry Filter
+    let matchesIndustry = true;
+    if (selectedIndustries.length > 0) {
+      matchesIndustry = selectedIndustries.some(ind => 
+        job.title.toLowerCase().includes(ind.toLowerCase()) || 
+        job.company.toLowerCase().includes(ind.toLowerCase()) ||
+        job.industry?.toLowerCase().includes(ind.toLowerCase())
+      );
+    }
+
+    // 2. Global Search Filter
+    let matchesSearch = true;
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      matchesSearch = (
+        job.title?.toLowerCase().includes(query) ||
+        job.company?.toLowerCase().includes(query) ||
+        job.location?.toLowerCase().includes(query) ||
+        job.description?.toLowerCase().includes(query) ||
+        job.skills?.some(skill => skill.toLowerCase().includes(query)) ||
+        job.industry?.toLowerCase().includes(query)
+      );
+    }
+
+    // 3. Location Filter
+    let matchesLocation = true;
+    if (locationQuery) {
+      matchesLocation = job.location?.toLowerCase().includes(locationQuery.toLowerCase());
+    }
+
+    return matchesIndustry && matchesSearch && matchesLocation;
   });
 
   return (
@@ -166,10 +190,8 @@ export default function Jobs() {
           <Search className="w-5 h-5 text-blue-600 shrink-0" />
           <input 
             type="text" 
-            name="q"
-            value={filters.q}
-            onChange={handleFilterChange}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Job title, keywords, or company..." 
             className="w-full pl-3 pr-4 py-2 bg-transparent text-sm focus:outline-none placeholder-gray-400"
           />
@@ -178,10 +200,8 @@ export default function Jobs() {
           <MapPin className="w-5 h-5 text-emerald-600 shrink-0" />
           <input 
             type="text" 
-            name="location"
-            value={filters.location}
-            onChange={handleFilterChange}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            value={locationQuery}
+            onChange={(e) => setLocationQuery(e.target.value)}
             placeholder="Dubai, Abu Dhabi, Remote..." 
             className="w-full pl-3 pr-4 py-2 bg-transparent text-sm focus:outline-none placeholder-gray-400"
           />
@@ -204,7 +224,9 @@ export default function Jobs() {
               <h3 className="font-bold text-sm tracking-widest uppercase text-gray-900">Filters</h3>
               <button 
                 onClick={() => {
-                  setFilters({ q: "", location: "", jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 0 });
+                  setFilters({ jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 0 });
+                  setSearchQuery("");
+                  setLocationQuery("");
                   setSelectedIndustries([]);
                 }}
                 className="text-xs font-bold text-blue-600 hover:text-blue-700"
@@ -366,7 +388,9 @@ export default function Jobs() {
                 <p>No jobs found matching your criteria.</p>
                 <button 
                   onClick={() => {
-                    setFilters({ q: "", location: "", jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 0 });
+                    setFilters({ jobType: "", experienceLevel: "", isRemote: false, companyCulture: [], salaryMin: 0, salaryMax: 0 });
+                    setSearchQuery("");
+                    setLocationQuery("");
                     setSelectedIndustries([]);
                   }}
                   className="mt-4 text-blue-600 font-bold hover:underline"

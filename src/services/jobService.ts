@@ -62,13 +62,16 @@ export async function fetchJobs(filters?: {
       companyCulture: job.company_culture || [],
     })) as Job[];
 
-    // Client-side text search for title/company/location
+    // Client-side text search for title/company/location/description/skills/industry
     if (filters?.q) {
       const searchLower = filters.q.toLowerCase();
       mappedJobs = mappedJobs.filter(j => 
-        j.title.toLowerCase().includes(searchLower) || 
-        j.company.toLowerCase().includes(searchLower) ||
-        j.location.toLowerCase().includes(searchLower)
+        j.title?.toLowerCase().includes(searchLower) || 
+        j.company?.toLowerCase().includes(searchLower) ||
+        j.location?.toLowerCase().includes(searchLower) ||
+        j.description?.toLowerCase().includes(searchLower) ||
+        j.skills?.some(skill => skill.toLowerCase().includes(searchLower)) ||
+        j.industry?.toLowerCase().includes(searchLower)
       );
     }
 
