@@ -17,6 +17,9 @@ CREATE TABLE public.users (
   status TEXT DEFAULT 'active',
   subscription_tier TEXT DEFAULT 'free',
   cv_data JSONB,
+  bonus_credits INTEGER DEFAULT 10,
+  daily_credits_used INTEGER DEFAULT 0,
+  last_credit_reset TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

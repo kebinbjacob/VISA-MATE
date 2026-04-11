@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { FolderOpen, FileText, UploadCloud, MoreVertical, Search, Filter, ShieldCheck, Clock, FileImage, File, Trash2, Eye, Download, ShieldAlert } from "lucide-react";
+import { FolderOpen, FileText, UploadCloud, MoreVertical, Search, Filter, ShieldCheck, Clock, FileImage, File, Trash2, Eye, Download, ShieldAlert, Edit2 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
-import { getUserDocuments, addDocument, deleteDocument, uploadDocumentFile } from "../services/documentService";
-import { Document } from "../types";
+import { getUserDocuments, addDocument, deleteDocument, uploadDocumentFile, updateDocument } from "../services/documentService";
+import { Document, UserProfile } from "../types";
+import { getOrCreateUserProfile } from "../services/userService";
 import { formatDate } from "../lib/utils";
 import toast from "react-hot-toast";
 
@@ -13,6 +14,7 @@ type VaultFile = {
   size: string;
   updatedAt: string;
   isFolder: boolean;
+  parentId?: string;
   count?: number;
   icon: any;
   color: string;
@@ -22,6 +24,7 @@ type VaultFile = {
 
 export default function DocumentVault() {
   const { user } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,9 +34,16 @@ export default function DocumentVault() {
   const [storageError, setStorageError] = useState(false);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [renamingFile, setRenamingFile] = useState<VaultFile | null>(null);
+  const [newFileName, setNewFileName] = useState("");
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [folderPath, setFolderPath] = useState<{id: string, name: string}[]>([]);
 
   useEffect(() => {
     if (user) {
+      getOrCreateUserProfile(user).then(setProfile);
       loadDocuments();
     }
   }, [user]);
@@ -58,6 +68,7 @@ export default function DocumentVault() {
           size: doc.size,
           updatedAt: formatDate(doc.createdAt),
           isFolder: doc.isFolder,
+          parentId: doc.parentId,
           url: doc.url,
           icon, color, bg
         };
@@ -71,10 +82,37 @@ export default function DocumentVault() {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && user) {
+    if (e.target.files && e.target.files[0] && user && profile) {
       const uploadedFile = e.target.files[0];
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(uploadedFile.type)) {
+        toast.error("Invalid file type. Only pictures (.jpg, .png) and documents (.pdf, .doc, .docx) are allowed.");
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
+      // Validate individual file size (3MB)
+      const maxFileSize = 3 * 1024 * 1024; // 3MB
+      if (uploadedFile.size > maxFileSize) {
+        toast.error("File size exceeds 3MB limit.");
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
+      // Validate total storage limit
+      const currentStorageUsed = files.reduce((acc, f) => acc + (f.isFolder ? 0 : parseFloat(f.size || '0')), 0) * 1024 * 1024;
+      const maxStorage = profile.subscriptionTier === 'premium' ? 50 * 1024 * 1024 : 20 * 1024 * 1024;
+      
+      if (currentStorageUsed + uploadedFile.size > maxStorage) {
+        toast.error(`Storage limit exceeded. Your limit is ${profile.subscriptionTier === 'premium' ? '50MB' : '20MB'}.`);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
       const ext = uploadedFile.name.split('.').pop()?.toUpperCase() || 'FILE';
-      const sizeStr = (uploadedFile.size / (1024 * 1024)).toFixed(1) + ' MB';
+      const sizeStr = (uploadedFile.size / (1024 * 1024)).toFixed(2) + ' MB';
       
       setUploading(true);
       const toastId = toast.loading(`Uploading ${uploadedFile.name}...`);
@@ -95,6 +133,7 @@ export default function DocumentVault() {
             isFolder: false,
             url: uploadResult.url,
             storagePath: uploadResult.storagePath,
+            parentId: currentFolderId || undefined,
           });
         } catch (dbErr: any) {
           console.error("Database insert error:", dbErr);
@@ -130,6 +169,7 @@ export default function DocumentVault() {
         type: "FOLDER",
         size: "0 KB",
         isFolder: true,
+        parentId: currentFolderId || undefined,
       });
       setNewFolderName("");
       setIsCreateFolderModalOpen(false);
@@ -174,7 +214,33 @@ export default function DocumentVault() {
     }
   };
 
-  const filteredFiles = files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const handleRenameFile = async () => {
+    if (!renamingFile || !newFileName.trim()) return;
+    const toastId = toast.loading("Renaming...");
+    try {
+      await updateDocument(renamingFile.id, { name: newFileName.trim() });
+      setFiles(files.map(f => f.id === renamingFile.id ? { ...f, name: newFileName.trim() } : f));
+      toast.success("Renamed successfully!", { id: toastId });
+      setIsRenameModalOpen(false);
+      setRenamingFile(null);
+      setNewFileName("");
+    } catch (error) {
+      console.error("Failed to rename:", error);
+      toast.error("Failed to rename.", { id: toastId });
+    }
+  };
+
+  const filteredFiles = files.filter(f => 
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
+    (searchQuery ? true : f.parentId === currentFolderId || (!f.parentId && !currentFolderId))
+  );
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setActiveDropdown(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto pb-12">
@@ -199,6 +265,7 @@ export default function DocumentVault() {
           type="file" 
           ref={fileInputRef} 
           className="hidden" 
+          accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
           onChange={handleFileUpload}
         />
       </div>
@@ -277,6 +344,34 @@ export default function DocumentVault() {
 
       {/* Main Content Area */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* Breadcrumbs */}
+        <div className="px-6 pt-6 pb-2 flex items-center gap-2 text-sm bg-gray-50/50">
+          <button 
+            onClick={() => {
+              setCurrentFolderId(null);
+              setFolderPath([]);
+            }}
+            className={`flex items-center gap-1 hover:text-blue-600 transition-colors ${currentFolderId === null ? 'text-blue-600 font-bold' : 'text-gray-500'}`}
+          >
+            <FolderOpen className="w-4 h-4" /> My Vault
+          </button>
+          
+          {folderPath.map((folder, index) => (
+            <React.Fragment key={folder.id}>
+              <span className="text-gray-400">/</span>
+              <button 
+                onClick={() => {
+                  setCurrentFolderId(folder.id);
+                  setFolderPath(folderPath.slice(0, index + 1));
+                }}
+                className={`hover:text-blue-600 transition-colors ${currentFolderId === folder.id ? 'text-blue-600 font-bold' : 'text-gray-500'}`}
+              >
+                {folder.name}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
+
         {/* Toolbar */}
         <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/50">
           <div className="relative w-full sm:w-96">
@@ -307,11 +402,20 @@ export default function DocumentVault() {
           {filteredFiles.length === 0 ? (
             <div className="col-span-full py-12 text-center text-gray-500">
               <FolderOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>No documents found matching "{searchQuery}"</p>
+              <p>{searchQuery ? `No documents found matching "${searchQuery}"` : "This folder is empty"}</p>
             </div>
           ) : (
             filteredFiles.map(file => (
-              <div key={file.id} className={`group p-5 rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer ${file.isFolder ? 'bg-white' : 'bg-gray-50/50'}`}>
+              <div 
+                key={file.id} 
+                onClick={() => {
+                  if (file.isFolder) {
+                    setCurrentFolderId(file.id);
+                    setFolderPath([...folderPath, { id: file.id, name: file.name }]);
+                  }
+                }}
+                className={`group p-5 rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer ${file.isFolder ? 'bg-white' : 'bg-gray-50/50'}`}
+              >
                 <div className="flex items-start justify-between mb-4">
                   <div className={`w-12 h-12 ${file.bg} rounded-xl flex items-center justify-center ${file.color} group-hover:scale-110 transition-transform`}>
                     <file.icon className={`w-6 h-6 ${file.isFolder ? 'fill-blue-100' : ''}`} />
@@ -330,9 +434,43 @@ export default function DocumentVault() {
                     <button onClick={(e) => handleDeleteFile(file.id, e)} className="p-1 text-gray-400 hover:text-red-600 rounded" title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>
-                    <button className="p-1 text-gray-400 hover:text-gray-900 rounded">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveDropdown(activeDropdown === file.id ? null : file.id);
+                        }} 
+                        className="p-1 text-gray-400 hover:text-gray-900 rounded"
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                      {activeDropdown === file.id && (
+                        <div className="absolute right-0 mt-1 w-36 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-10">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRenamingFile(file);
+                              setNewFileName(file.name);
+                              setIsRenameModalOpen(true);
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <Edit2 className="w-4 h-4" /> Rename
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteFile(file.id, e);
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-1 truncate" title={file.name}>{file.name}</h3>
@@ -374,6 +512,41 @@ export default function DocumentVault() {
                 className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Rename Modal */}
+      {isRenameModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Rename {renamingFile?.isFolder ? 'Folder' : 'File'}</h2>
+            <input
+              type="text"
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              placeholder="New Name"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setIsRenameModalOpen(false);
+                  setRenamingFile(null);
+                  setNewFileName("");
+                }}
+                className="px-4 py-2 text-gray-600 font-semibold hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRenameFile}
+                disabled={!newFileName.trim()}
+                className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                Rename
               </button>
             </div>
           </div>

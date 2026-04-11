@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { UserProfile } from "../types";
-import { Search, Shield, User, Edit2, Plus, X, Mail, Ban, CheckCircle } from "lucide-react";
+import { Search, Shield, User, Edit2, Plus, X, Mail, Ban, CheckCircle, Trash2 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { getOrCreateUserProfile } from "../services/userService";
 import { createClient } from "@supabase/supabase-js";
@@ -28,7 +28,12 @@ export default function AdminUsers() {
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [editName, setEditName] = useState("");
   const [editSubscriptionTier, setEditSubscriptionTier] = useState<"free" | "premium">("free");
+  const [editBonusCredits, setEditBonusCredits] = useState<number>(0);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -181,6 +186,7 @@ export default function AdminUsers() {
     setEditingUser(u);
     setEditName(u.name || "");
     setEditSubscriptionTier(u.subscriptionTier || "free");
+    setEditBonusCredits(u.bonusCredits || 0);
     setIsEditModalOpen(true);
   };
 
@@ -195,13 +201,14 @@ export default function AdminUsers() {
         .from('users')
         .update({ 
           name: editName,
-          subscription_tier: editSubscriptionTier
+          subscription_tier: editSubscriptionTier,
+          bonus_credits: editBonusCredits
         })
         .eq('id', editingUser.id);
         
       if (error) throw error;
       
-      setUsers(users.map(u => u.id === editingUser.id ? { ...u, name: editName, subscriptionTier: editSubscriptionTier } : u));
+      setUsers(users.map(u => u.id === editingUser.id ? { ...u, name: editName, subscriptionTier: editSubscriptionTier, bonusCredits: editBonusCredits } : u));
       toast.success("User updated successfully", { id: toastId });
       setIsEditModalOpen(false);
     } catch (error: any) {
@@ -209,6 +216,38 @@ export default function AdminUsers() {
       toast.error(`Failed to update user: ${error.message}`, { id: toastId });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const confirmDeleteUser = (u: UserProfile) => {
+    setUserToDelete(u);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    const toastId = toast.loading("Deleting user profile data...");
+
+    try {
+      // Note: This only deletes the public.users record (and cascaded data).
+      // It does not delete the auth.users record due to Supabase security restrictions on the client.
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userToDelete.id);
+        
+      if (error) throw error;
+      
+      setUsers(users.filter(u => u.id !== userToDelete.id));
+      toast.success("User profile data deleted successfully", { id: toastId });
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast.error(`Failed to delete user: ${error.message}`, { id: toastId });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -381,6 +420,13 @@ CREATE POLICY "Super Admins can delete users" ON public.users FOR DELETE USING (
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
+                      <button 
+                        onClick={() => confirmDeleteUser(u)}
+                        className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                        title="Delete User Data"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -437,6 +483,18 @@ CREATE POLICY "Super Admins can delete users" ON public.users FOR DELETE USING (
                   <option value="free">Free</option>
                   <option value="premium">Premium</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bonus AI Credits</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={editBonusCredits}
+                  onChange={(e) => setEditBonusCredits(parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Manually add or remove bonus credits for this user.</p>
               </div>
               
               <div className="pt-4 flex justify-end gap-3">
@@ -544,6 +602,41 @@ CREATE POLICY "Super Admins can delete users" ON public.users FOR DELETE USING (
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete User Modal */}
+      {isDeleteModalOpen && userToDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Delete User Data?</h3>
+              <p className="text-gray-500 mb-6">
+                Are you sure you want to delete the profile data for <strong>{userToDelete.name || userToDelete.email}</strong>? 
+                This action cannot be undone and will remove their profile, CVs, and documents from the platform.
+              </p>
+              <div className="flex justify-center gap-3">
+                <button 
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setUserToDelete(null);
+                  }}
+                  className="px-6 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDeleteUser}
+                  disabled={isDeleting}
+                  className="px-6 py-2 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isDeleting ? "Deleting..." : "Yes, Delete"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "./AuthProvider";
-import { getOrCreateUserProfile, saveCVData } from "../services/userService";
+import { getOrCreateUserProfile, saveCVData, consumeCredit } from "../services/userService";
 import { UserProfile, CVData, WorkExperience, Education } from "../types";
-import { enhanceSummary, extractCVData, enhanceExperienceDescription } from "../services/cvService";
+import { enhanceSummary, extractCVData, enhanceExperienceDescription, buildCVWithPrompt } from "../services/cvService";
 import CVPreview from "./CVPreview";
 import { 
   Plus, Trash2, Save, Sparkles, Loader2, 
   Briefcase, GraduationCap, User, Wrench, 
   Globe, ChevronRight, ChevronLeft, Layout, 
-  Edit3, Eye, CheckCircle2, Upload
+  Edit3, Eye, CheckCircle2, Upload, MessageSquare
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import toast from "react-hot-toast";
@@ -31,6 +31,8 @@ export default function CVBuilder() {
   const [enhancing, setEnhancing] = useState(false);
   const [enhancingExp, setEnhancingExp] = useState<Record<number, boolean>>({});
   const [extracting, setExtracting] = useState(false);
+  const [buildingWithPrompt, setBuildingWithPrompt] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [activeSection, setActiveSection] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +40,7 @@ export default function CVBuilder() {
   const isInitialLoad = useRef(true);
 
   const sections = [
+    { id: "ai-prompt", label: "Build with AI", icon: MessageSquare },
     { id: "personal", label: "Personal Info", icon: User },
     { id: "summary", label: "Professional Summary", icon: Edit3 },
     { id: "experience", label: "Work Experience", icon: Briefcase },
@@ -117,6 +120,13 @@ export default function CVBuilder() {
 
   const handleEnhanceSummary = async () => {
     if (!cvData.summary || !profile) return;
+    
+    const hasCredit = await consumeCredit(profile);
+    if (!hasCredit) {
+      toast.error("You have run out of AI credits for today.");
+      return;
+    }
+    
     setEnhancing(true);
     const toastId = toast.loading("Enhancing summary with AI...");
     try {
@@ -138,6 +148,13 @@ export default function CVBuilder() {
       return;
     }
     
+    if (!profile) return;
+    const hasCredit = await consumeCredit(profile);
+    if (!hasCredit) {
+      toast.error("You have run out of AI credits for today.");
+      return;
+    }
+    
     setEnhancingExp(prev => ({ ...prev, [index]: true }));
     const toastId = toast.loading("Enhancing experience with AI...");
     try {
@@ -154,7 +171,14 @@ export default function CVBuilder() {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !profile) return;
+
+    const hasCredit = await consumeCredit(profile);
+    if (!hasCredit) {
+      toast.error("You have run out of AI credits for today.");
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     setExtracting(true);
     const toastId = toast.loading("Extracting CV data with AI... This may take a few seconds.");
@@ -204,6 +228,50 @@ export default function CVBuilder() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  const handleBuildWithPrompt = async () => {
+    if (!aiPrompt.trim() || !profile) return;
+    
+    const hasCredit = await consumeCredit(profile);
+    if (!hasCredit) {
+      toast.error("You have run out of AI credits for today.");
+      return;
+    }
+    
+    setBuildingWithPrompt(true);
+    const toastId = toast.loading("Building CV with AI... This may take a few seconds.");
+    try {
+      const generatedData = await buildCVWithPrompt(aiPrompt);
+      
+      setCvData(prev => ({
+        ...prev,
+        summary: generatedData.summary || prev.summary,
+        experience: generatedData.experience || prev.experience,
+        education: generatedData.education || prev.education,
+        skills: generatedData.skills || prev.skills,
+        languages: generatedData.languages || prev.languages,
+        noticePeriod: generatedData.noticePeriod || prev.noticePeriod,
+        linkedin: generatedData.linkedin || prev.linkedin,
+        github: generatedData.github || prev.github
+      }));
+      
+      if (user) {
+         await saveCVData(user.id, {
+           ...cvData,
+           ...generatedData
+         });
+         setLastSaved(new Date());
+      }
+      toast.success("CV generated successfully!", { id: toastId });
+      setAiPrompt("");
+      setActiveSection(1); // Move to Personal Info
+    } catch (error) {
+      console.error("Error building CV with AI:", error);
+      toast.error("Failed to build CV. Please try again.", { id: toastId });
+    } finally {
+      setBuildingWithPrompt(false);
     }
   };
 
@@ -411,8 +479,51 @@ export default function CVBuilder() {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {/* Personal Info Section */}
+                  {/* AI Prompt Section */}
                   {activeSection === 0 && (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                            <MessageSquare className="w-5 h-5" />
+                          </div>
+                          <h2 className="text-2xl font-bold text-gray-900">Build with AI Prompt</h2>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 mb-6">
+                        <p className="text-sm text-indigo-800 leading-relaxed">
+                          <strong>How it works:</strong> Describe your ideal CV, including your target role, years of experience, and key skills. Our AI will generate a complete, professional CV structure for you. 
+                          <br/><br/>
+                          <em>Example: "Create a CV for a Senior Frontend Developer with 5 years of experience in React, TypeScript, and Tailwind CSS. I have worked in fintech and e-commerce."</em>
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <label className="text-sm font-bold text-gray-700">Enter your prompt</label>
+                        <textarea
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          rows={6}
+                          className="w-full px-4 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition-all resize-none leading-relaxed"
+                          placeholder="Describe your experience and target role..."
+                        />
+                        <div className="flex justify-end">
+                          <button
+                            onClick={handleBuildWithPrompt}
+                            disabled={buildingWithPrompt || !aiPrompt.trim()}
+                            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50"
+                          >
+                            {buildingWithPrompt ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                            Generate CV
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Personal Info Section */}
+                  {activeSection === 1 && (
                     <div className="space-y-8">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
@@ -514,7 +625,7 @@ export default function CVBuilder() {
                   )}
 
                   {/* Summary Section */}
-                  {activeSection === 1 && (
+                  {activeSection === 2 && (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -547,7 +658,7 @@ export default function CVBuilder() {
                   )}
 
                   {/* Experience Section */}
-                  {activeSection === 2 && (
+                  {activeSection === 3 && (
                     <div className="space-y-8">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -672,7 +783,7 @@ export default function CVBuilder() {
                   )}
 
                   {/* Education Section */}
-                  {activeSection === 3 && (
+                  {activeSection === 4 && (
                     <div className="space-y-8">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -757,7 +868,7 @@ export default function CVBuilder() {
                   )}
 
                   {/* Skills Section */}
-                  {activeSection === 4 && (
+                  {activeSection === 5 && (
                     <div className="space-y-10">
                       <div className="space-y-6">
                         <div className="flex items-center gap-3">

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { getUserApplications, updateApplicationStatus, deleteApplication, addApplication } from "../services/applicationService";
 import { Application, ApplicationStatus, Job } from "../types";
-import { Briefcase, MapPin, Globe, Clock, Trash2, ExternalLink, GripVertical, Plus, X } from "lucide-react";
+import { Briefcase, MapPin, Globe, Clock, Trash2, ExternalLink, GripVertical, Plus, X, Search } from "lucide-react";
 import { formatCurrency } from "../lib/utils";
 import { DndContext, DragEndEvent, closestCorners, useDraggable, useDroppable } from "@dnd-kit/core";
 import toast from "react-hot-toast";
@@ -128,6 +128,7 @@ export default function JobTracker() {
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Manual Job Form State
   const [newJobTitle, setNewJobTitle] = useState("");
@@ -251,6 +252,23 @@ export default function JobTracker() {
     }
   };
 
+  const filteredApplications = applications.filter(app => {
+    if (!searchQuery) return true;
+    if (!app.job) return false;
+    
+    const query = searchQuery.toLowerCase();
+    const job = app.job;
+    
+    return (
+      job.title?.toLowerCase().includes(query) ||
+      job.company?.toLowerCase().includes(query) ||
+      job.location?.toLowerCase().includes(query) ||
+      job.description?.toLowerCase().includes(query) ||
+      job.skills?.some(skill => skill.toLowerCase().includes(query)) ||
+      job.industry?.toLowerCase().includes(query)
+    );
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -270,7 +288,7 @@ export default function JobTracker() {
         onCancel={() => setAppToDelete(null)}
         type="danger"
       />
-      <div className="mb-8 shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="mb-8 shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">
             Application <span className="text-blue-700">Tracker.</span>
@@ -279,13 +297,25 @@ export default function JobTracker() {
             Drag and drop your saved jobs to track your application progress.
           </p>
         </div>
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors font-bold text-sm shadow-sm shrink-0"
-        >
-          <Plus className="w-5 h-5" />
-          Add Job Manually
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative w-full sm:w-64">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Search jobs..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+            />
+          </div>
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors font-bold text-sm shadow-sm shrink-0"
+          >
+            <Plus className="w-5 h-5" />
+            Add Job Manually
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-x-auto hide-scrollbar pb-8">
@@ -296,7 +326,7 @@ export default function JobTracker() {
                 key={status}
                 status={status}
                 title={STATUS_LABELS[status]}
-                applications={applications.filter(a => a.status === status)}
+                applications={filteredApplications.filter(a => a.status === status)}
                 onDelete={(id) => setAppToDelete(id)}
               />
             ))}

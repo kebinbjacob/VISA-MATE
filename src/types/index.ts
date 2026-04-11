@@ -104,6 +104,9 @@ export interface UserProfile {
   subscriptionTier: "free" | "premium";
   role?: "super_admin" | "admin" | "publisher" | "editor" | "user";
   status?: "active" | "suspended";
+  bonusCredits?: number;
+  dailyCreditsUsed?: number;
+  lastCreditReset?: string;
   createdAt: string;
   updatedAt: string;
 }

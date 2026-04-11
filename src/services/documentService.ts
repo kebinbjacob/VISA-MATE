@@ -105,3 +105,25 @@ export async function deleteDocument(docId: string) {
     throw deleteError;
   }
 }
+
+export async function updateDocument(docId: string, updates: Partial<Document>) {
+  const dbUpdates: any = {};
+  if (updates.name !== undefined) dbUpdates.name = updates.name;
+  if (updates.type !== undefined) dbUpdates.type = updates.type;
+  if (updates.size !== undefined) dbUpdates.size = updates.size;
+  if (updates.url !== undefined) dbUpdates.url = updates.url;
+  if (updates.storagePath !== undefined) dbUpdates.storage_path = updates.storagePath;
+  if (updates.isFolder !== undefined) dbUpdates.is_folder = updates.isFolder;
+  if (updates.parentId !== undefined) dbUpdates.parent_id = updates.parentId;
+  
+  dbUpdates.updated_at = new Date().toISOString();
+
+  const { error } = await supabase
+    .from('documents')
+    .update(dbUpdates)
+    .eq('id', docId);
+
+  if (error) {
+    throw error;
+  }
+}

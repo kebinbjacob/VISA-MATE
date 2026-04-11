@@ -25,7 +25,9 @@ A comprehensive, AI-powered platform designed to assist expats in the UAE with t
 ### 5. 📄 AI-Powered CV Builder & Analyzer
 * **CV Analyzer**: Upload your existing CV (PDF/DOCX) and receive an AI-generated ATS (Applicant Tracking System) compatibility score, complete with actionable feedback tailored for the UAE market.
 * **CV Builder**: Create a professional CV from scratch or extract data from an existing one.
+* **AI Prompt Builder**: Generate a complete, professional CV structure simply by describing your experience and target role to the AI.
 * **AI Bullet Enhancement**: Automatically improve your experience descriptions using Google Gemini AI to make them more impactful and metric-driven.
+* **AI Credit System**: AI features consume credits. Free users receive 10 bonus credits and 5 daily credits. Premium users receive 50 bonus credits and 20 daily credits.
 
 ### 6. 🛡️ Scam Finder (Fraud Detector)
 * **AI Scam Detection**: Paste job offers, emails, or contract text to analyze them for predatory patterns common in UAE employment scams.
@@ -34,8 +36,11 @@ A comprehensive, AI-powered platform designed to assist expats in the UAE with t
 
 ### 7. 📁 Secure Document Vault
 * **Cloud Storage**: Securely upload, store, and manage essential documents like your Passport, Emirates ID, Visa copies, and CVs.
+* **File & Folder Management**: Create folders, rename files/folders, and organize your documents efficiently.
+* **Storage Limits**: Free users have a 20MB storage limit, while Premium users enjoy up to 50MB. Individual files are capped at 3MB.
+* **Allowed File Types**: Only picture (.jpg, .jpeg, .png) and document (.pdf, .doc, .docx) files are permitted for security.
 * **Categorization**: Automatically categorizes files with visual icons for quick retrieval.
-* **File Management**: View, download, and delete files directly from the platform.
+* **File Actions**: View, download, rename, and delete files directly from the platform.
 
 ### 8. 👤 Profile Management
 * **Personal Details**: Manage your contact information, professional title, and location.
@@ -111,7 +116,7 @@ The application follows a modern Serverless Single Page Application (SPA) archit
 
 ### Data Models (PostgreSQL Schema)
 
-* **`users`**: Extended user profiles (role, title, location, preferences) linked to Supabase Auth.
+* **`users`**: Extended user profiles (role, title, location, preferences) linked to Supabase Auth. Includes the AI Credit System tracking (`bonus_credits`, `daily_credits_used`, `last_credit_reset`).
 * **`jobs`**: Global job postings available on the platform (managed by admins or AI).
 * **`applications`**: User-specific job tracking records linking a user to a job with a specific status (saved, applied, interview, offer, rejected).
 * **`documents`**: Metadata for files stored in Supabase Storage (type, size, URL).

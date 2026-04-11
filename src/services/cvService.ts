@@ -186,6 +186,92 @@ export async function extractCVData(fileBase64: string, mimeType: string): Promi
   }
 }
 
+export async function buildCVWithPrompt(promptText: string): Promise<Partial<CVData>> {
+  try {
+    // @ts-ignore
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error("No Gemini API key found for CV generation.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const prompt = `You are an expert CV writer. A user wants to build a CV based on the following prompt:
+    "${promptText}"
+    
+    Requirements:
+    - Generate a complete, professional CV structure based on the prompt.
+    - If the prompt lacks specific details, invent plausible, professional filler content that matches the requested role and experience level.
+    - Format the output exactly according to the provided JSON schema.
+    - Ensure the summary is impactful and tailored to the role.
+    - Use strong action verbs for experience descriptions.
+    - Only generate content relevant to CV enhancement and building.
+    
+    Return ONLY the JSON object.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING, description: "Professional summary" },
+            experience: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  company: { type: Type.STRING },
+                  position: { type: Type.STRING },
+                  location: { type: Type.STRING },
+                  startDate: { type: Type.STRING },
+                  endDate: { type: Type.STRING },
+                  current: { type: Type.BOOLEAN },
+                  description: { type: Type.STRING, description: "Bullet points or paragraph of responsibilities" }
+                }
+              }
+            },
+            education: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  institution: { type: Type.STRING },
+                  degree: { type: Type.STRING },
+                  field: { type: Type.STRING },
+                  startDate: { type: Type.STRING },
+                  endDate: { type: Type.STRING }
+                }
+              }
+            },
+            skills: { type: Type.ARRAY, items: { type: Type.STRING } },
+            languages: { type: Type.ARRAY, items: { type: Type.STRING } },
+            certifications: { type: Type.ARRAY, items: { type: Type.STRING } },
+            dateOfBirth: { type: Type.STRING },
+            nationality: { type: Type.STRING },
+            visaStatus: { type: Type.STRING },
+            noticePeriod: { type: Type.STRING },
+            linkedin: { type: Type.STRING },
+            github: { type: Type.STRING }
+          }
+        }
+      }
+    });
+
+    if (!response.text) {
+      throw new Error("Empty response from AI");
+    }
+
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error generating CV via Gemini:", error);
+    throw error;
+  }
+}
+
 export async function enhanceExperienceDescription(description: string, position: string, company: string): Promise<string> {
   try {
     // @ts-ignore

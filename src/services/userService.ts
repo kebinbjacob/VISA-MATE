@@ -28,6 +28,9 @@ export async function getOrCreateUserProfile(user: User): Promise<UserProfile> {
       role: existingUser.role,
       subscriptionTier: existingUser.subscription_tier,
       cvData: existingUser.cv_data,
+      bonusCredits: existingUser.bonus_credits,
+      dailyCreditsUsed: existingUser.daily_credits_used,
+      lastCreditReset: existingUser.last_credit_reset,
       createdAt: existingUser.created_at,
       updatedAt: existingUser.updated_at || existingUser.created_at,
       phone: existingUser.phone || user.user_metadata?.phone,
@@ -51,6 +54,9 @@ export async function getOrCreateUserProfile(user: User): Promise<UserProfile> {
     visa_status: user.user_metadata?.visaStatus || null,
     subscription_tier: "free",
     role: "user",
+    bonus_credits: 10,
+    daily_credits_used: 0,
+    last_credit_reset: new Date().toISOString(),
     cv_data: {
       summary: "",
       experience: [],
@@ -80,6 +86,9 @@ export async function getOrCreateUserProfile(user: User): Promise<UserProfile> {
     role: insertedUser.role,
     subscriptionTier: insertedUser.subscription_tier,
     cvData: insertedUser.cv_data,
+    bonusCredits: insertedUser.bonus_credits,
+    dailyCreditsUsed: insertedUser.daily_credits_used,
+    lastCreditReset: insertedUser.last_credit_reset,
     createdAt: insertedUser.created_at,
     updatedAt: insertedUser.updated_at || insertedUser.created_at,
     phone: insertedUser.phone,
@@ -101,6 +110,9 @@ export async function updateUserProfile(userId: string, data: Partial<UserProfil
   if (data.location !== undefined) updateData.location = data.location;
   if (data.nationality !== undefined) updateData.nationality = data.nationality;
   if (data.visaStatus !== undefined) updateData.visa_status = data.visaStatus;
+  if (data.bonusCredits !== undefined) updateData.bonus_credits = data.bonusCredits;
+  if (data.dailyCreditsUsed !== undefined) updateData.daily_credits_used = data.dailyCreditsUsed;
+  if (data.lastCreditReset !== undefined) updateData.last_credit_reset = data.lastCreditReset;
   
   if (Object.keys(updateData).length > 0) {
     const { error } = await supabase
@@ -134,4 +146,35 @@ export async function getCVData(userId: string): Promise<CVData | null> {
   }
   
   return data?.cv_data || null;
+}
+
+export async function consumeCredit(userProfile: UserProfile): Promise<boolean> {
+  const now = new Date();
+  const lastReset = userProfile.lastCreditReset ? new Date(userProfile.lastCreditReset) : new Date(0);
+  
+  // Check if we need to reset daily credits
+  const isNewDay = now.getUTCFullYear() !== lastReset.getUTCFullYear() || 
+                   now.getUTCMonth() !== lastReset.getUTCMonth() || 
+                   now.getUTCDate() !== lastReset.getUTCDate();
+                   
+  let currentDailyUsed = isNewDay ? 0 : (userProfile.dailyCreditsUsed || 0);
+  let currentBonus = userProfile.bonusCredits || 0;
+  
+  const dailyLimit = userProfile.subscriptionTier === 'premium' ? 25 : 5;
+  
+  if (currentDailyUsed < dailyLimit) {
+    currentDailyUsed += 1;
+  } else if (currentBonus > 0) {
+    currentBonus -= 1;
+  } else {
+    return false; // No credits left
+  }
+  
+  await updateUserProfile(userProfile.id, {
+    dailyCreditsUsed: currentDailyUsed,
+    bonusCredits: currentBonus,
+    lastCreditReset: isNewDay ? now.toISOString() : userProfile.lastCreditReset
+  });
+  
+  return true;
 }
