@@ -34,6 +34,7 @@ interface TypographySettings {
   sectionGap:  number; // mm  2–12
   marginH:     number; // mm  10–30
   marginV:     number; // mm  10–25
+  padding:     number; // mm  0-20
 }
 
 const FONT_OPTIONS: { label: string; value: TypographySettings["fontFamily"]; css: string }[] = [
@@ -52,6 +53,7 @@ const DEFAULTS: TypographySettings = {
   sectionGap:  4,
   marginH:     20,
   marginV:     18,
+  padding:     0,
 };
 
 // ─── Reusable slider ──────────────────────────────────────────────────────────
@@ -99,6 +101,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
   const wordSp    = `${typo.wordSpacing}em`;
   const marginHpx = `${(typo.marginH * 96 / 25.4).toFixed(1)}px`;
   const marginVpx = `${(typo.marginV * 96 / 25.4).toFixed(1)}px`;
+  const paddingPx = `${(typo.padding * 96 / 25.4).toFixed(1)}px`;
 
   // Line-height in mm for jsPDF: pt × lineSpacing × 0.352778 mm/pt
   const mmLH = (pt: number) => pt * typo.lineSpacing * 0.352778;
@@ -132,8 +135,8 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
     const pdf  = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
     const font = typo.fontFamily;
     const W = 210, H = 297;
-    const ML = typo.marginH, MR = typo.marginH;
-    const MT = typo.marginV, MB = typo.marginV;
+    const ML = typo.marginH + typo.padding, MR = typo.marginH + typo.padding;
+    const MT = typo.marginV + typo.padding, MB = typo.marginV + typo.padding;
     const TW  = W - ML - MR;
     const WSP = typo.wordSpacing * 3;
     const LHB = mmLH(typo.bodySize);
@@ -281,8 +284,8 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
     const font = typo.fontFamily;
     const W = 210, H = 297;
     const LC = 73, RC = W - LC;
-    const LP = 8,  RP = 10;
-    const MB  = typo.marginV * 0.7;
+    const LP = 8 + typo.padding,  RP = 10 + typo.padding;
+    const MB  = (typo.marginV + typo.padding) * 0.7;
     const LTW = LC - LP * 2;
     const RTW = RC - RP * 2;
     const WSP = typo.wordSpacing * 3;
@@ -295,12 +298,12 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
     const WHITE: [number, number, number] = [255, 255, 255];
     const GRAY : [number, number, number] = [55,  65,  81 ];
 
-    let lY = 12, rY = 0;
+    let lY = 12 + typo.padding, rY = 0;
     const lX = LP, rX = LC + RP;
 
     const drawBg = () => {
       pdf.setFillColor(...LIGHT); pdf.rect(0, 0, LC, H, "F");
-      pdf.setFillColor(...DARK);  pdf.rect(LC, 0, RC, 52, "F");
+      pdf.setFillColor(...DARK);  pdf.rect(LC, 0, RC, 52 + typo.padding * 1.5, "F");
     };
     drawBg();
 
@@ -415,7 +418,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
     }
 
     // ── Right column ──
-    rY = 16;
+    rY = 16 + typo.padding;
     pdf.setFont(font, "bold"); pdf.setFontSize(typo.nameSize);
     pdf.setTextColor(...WHITE);
     pdf.text(profile.name.toUpperCase(), rX, rY);
@@ -424,7 +427,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
     pdf.setFont(font, "normal"); pdf.setFontSize(typo.bodySize + 1);
     pdf.setTextColor(200, 200, 210);
     pdf.text((profile.headline || "Professional").toUpperCase(), rX, rY);
-    rY = 56;
+    rY = 56 + typo.padding;
 
     if (cvData.summary) {
       rHead("Profile");
@@ -611,9 +614,10 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
               <Slider label="Section gap"     value={typo.sectionGap}  min={2}   max={12}  step={1}    unit="mm" onChange={(v) => setT("sectionGap",  v)} />
             </div>
             <div className="space-y-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Page Margins</p>
-              <Slider label="Left / Right"    value={typo.marginH} min={10} max={30} step={1} unit="mm" onChange={(v) => setT("marginH", v)} />
-              <Slider label="Top / Bottom"    value={typo.marginV} min={10} max={25} step={1} unit="mm" onChange={(v) => setT("marginV", v)} />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Page Margins &amp; Padding</p>
+              <Slider label="Left / Right Margin" value={typo.marginH} min={10} max={30} step={1} unit="mm" onChange={(v) => setT("marginH", v)} />
+              <Slider label="Top / Bottom Margin" value={typo.marginV} min={10} max={25} step={1} unit="mm" onChange={(v) => setT("marginV", v)} />
+              <Slider label="Content Padding"     value={typo.padding} min={0}  max={20} step={1} unit="mm" onChange={(v) => setT("padding", v)} />
             </div>
           </div>
 
@@ -653,7 +657,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
             {/* Left sidebar */}
             <div data-col="left"
               className="w-full md:w-[35%] bg-[#E8E9EB] flex flex-col"
-              style={{ padding: `${marginVpx} ${marginHpx}` }}
+              style={{ padding: `calc(${marginVpx} + ${paddingPx}) calc(${marginHpx} + ${paddingPx})` }}
             >
               {profile.photoUrl && (
                 <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-white shadow-md mx-auto mb-6 shrink-0">
@@ -721,7 +725,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
             <div data-col="right" className="w-full md:w-[65%] flex flex-col bg-white">
               {/* Dark header band */}
               <div className="bg-[#2C3545] text-white flex flex-col justify-center min-h-[160px] md:min-h-[200px]"
-                style={{ padding: `${marginVpx} ${marginHpx}` }}>
+                style={{ padding: `calc(${marginVpx} + ${paddingPx}) calc(${marginHpx} + ${paddingPx})` }}>
                 <h1 className="font-bold tracking-widest uppercase mb-2 break-words" style={{ fontSize: namePx, fontFamily: fontCss }}>
                   {profile.name}
                 </h1>
@@ -731,7 +735,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
               </div>
 
               {/* Sections */}
-              <div className="flex-1 space-y-6" style={{ padding: `${marginVpx} ${marginHpx}` }}>
+              <div className="flex-1 space-y-6" style={{ padding: `calc(${marginVpx} + ${paddingPx}) calc(${marginHpx} + ${paddingPx})` }}>
 
                 {cvData.summary && (
                   <section>
@@ -807,7 +811,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
           // ── ATS template ─────────────────────────────────────────────────
           <div ref={cvRef}
             className="bg-white text-black mx-auto w-full max-w-[210mm]"
-            style={{ minHeight: "297mm", padding: `${marginVpx} ${marginHpx}`, fontFamily: fontCss, fontSize: bodyPx, lineHeight: lineH, wordSpacing: wordSp }}
+            style={{ minHeight: "297mm", padding: `calc(${marginVpx} + ${paddingPx}) calc(${marginHpx} + ${paddingPx})`, fontFamily: fontCss, fontSize: bodyPx, lineHeight: lineH, wordSpacing: wordSp }}
           >
             <header className="text-center mb-4">
               <h1 className="font-bold uppercase mb-1" style={{ fontSize: namePx, letterSpacing: "0.08em" }}>
