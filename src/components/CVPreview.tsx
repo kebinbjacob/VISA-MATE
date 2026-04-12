@@ -20,25 +20,25 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
 
     try {
       // Small delay to allow state to update and re-render with desktop layout
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const element = cvRef.current;
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         logging: false,
         windowWidth: 1024,
       });
       
       const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a5");
+      const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
       
-      // Map width exactly to A4 width
       const ratio = pdfWidth / imgWidth;
       const scaledHeight = imgHeight * ratio;
 
@@ -48,7 +48,6 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
       pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
       heightLeft -= pdfHeight;
 
-      // Add new pages if content exceeds one A4 page
       while (heightLeft > 0) {
         position = heightLeft - scaledHeight;
         pdf.addPage();
@@ -59,6 +58,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
       pdf.save(`${profile.name.replace(/\s+/g, "_")}_CV.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. This might be due to image loading issues. Please try again.");
     } finally {
       setIsExporting(false);
     }
@@ -129,11 +129,11 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
         </button>
       </div>
 
-      <div className="bg-white shadow-xl border border-gray-200 rounded-lg overflow-hidden flex justify-center cv-preview-container">
+      <div className={`bg-white shadow-xl border border-gray-200 rounded-lg flex justify-center cv-preview-container ${isExporting ? 'overflow-visible' : 'overflow-hidden'}`}>
         {template === "modern" ? (
           <div 
             ref={cvRef} 
-            className={`flex bg-white text-gray-800 font-sans mx-auto ${isExporting ? 'flex-row w-[210mm]' : 'flex-col md:flex-row w-full max-w-[210mm]'}`}
+            className={`flex bg-white text-gray-800 font-sans mx-auto ${isExporting ? 'flex-row w-[1024px]' : 'flex-col md:flex-row w-full max-w-[210mm]'}`}
             style={{ minHeight: "297mm" }}
           >
             {/* Left Column */}
@@ -330,7 +330,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
         ) : (
           <div 
             ref={cvRef} 
-            className={`p-6 md:p-12 bg-white text-black font-serif leading-relaxed mx-auto ${isExporting ? 'w-[210mm]' : 'w-full max-w-[210mm]'}`}
+            className={`p-6 md:p-12 bg-white text-black font-serif leading-relaxed mx-auto ${isExporting ? 'w-[1024px]' : 'w-full max-w-[210mm]'}`}
             style={{ minHeight: "297mm", fontFamily: "'Times New Roman', Times, serif" }}
           >
             {/* Header */}
