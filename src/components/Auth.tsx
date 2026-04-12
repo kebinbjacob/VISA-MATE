@@ -67,13 +67,14 @@ export default function Auth() {
         if (error) throw error;
         
         if (data.user) {
-          // If email confirmation is required, data.session will be null
-          if (!data.session) {
-            setMessage("Registration successful! Please check your email to confirm your account.");
-            setIsSignUp(false); // Switch to login view
-            setPassword(""); // Clear password for security
-          } else {
+          alert("Please check your email to confirm your email address.");
+          setIsSignUp(false); // Switch to login view
+          setPassword(""); // Clear password for security
+          
+          if (data.session) {
             await getOrCreateUserProfile(data.user);
+            // Force sign out if auto-login happened so they stay on login page
+            await supabase.auth.signOut();
           }
         }
       } else {
