@@ -330,48 +330,50 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
         ) : (
           <div 
             ref={cvRef} 
-            className={`p-6 md:p-12 bg-white text-black font-serif leading-relaxed mx-auto ${isExporting ? 'w-[1024px]' : 'w-full max-w-[210mm]'}`}
-            style={{ minHeight: "297mm", fontFamily: "'Times New Roman', Times, serif" }}
+            className={`bg-white text-black font-serif mx-auto ${isExporting ? 'w-[794px]' : 'w-full max-w-[210mm]'}`}
+            style={{ 
+              minHeight: "297mm", 
+              padding: "0.6in",
+              fontFamily: "'Times New Roman', Times, serif" 
+            }}
           >
             {/* Header */}
-            <header className="text-center mb-6">
-              <h1 className="text-2xl md:text-3xl font-bold mb-1 uppercase tracking-wider">{profile.name}</h1>
-              <p className="text-sm md:text-base mb-2">{profile.headline}</p>
-              <p className="text-xs md:text-sm">{profile.location}</p>
-              <p className="text-xs md:text-sm mt-1">
-                {profile.phone} &mdash; {profile.email} {cvData.linkedin && <>&mdash; {cvData.linkedin}</>}
+            <header className="text-center mb-5">
+              <h1 className="text-[24px] font-bold mb-1 uppercase tracking-wider">{profile.name}</h1>
+              <p className="text-[13px] mt-1">
+                {profile.location} &nbsp;|&nbsp; {profile.phone} &nbsp;|&nbsp; {profile.email} {cvData.linkedin && <>&nbsp;|&nbsp; {cvData.linkedin}</>}
               </p>
             </header>
 
             {/* Summary */}
             {cvData.summary && (
-              <section className="mb-6">
-                <h2 className="text-base md:text-lg font-bold uppercase border-b border-black pb-1 mb-2">Professional Summary</h2>
-                <p className="text-sm text-justify whitespace-pre-wrap leading-snug">{cvData.summary}</p>
+              <section className="mb-5">
+                <h2 className="text-[13px] font-bold uppercase border-b border-black pb-0.5 mb-2">Professional Summary</h2>
+                <p className="text-[13px] text-justify whitespace-pre-wrap leading-snug">{cvData.summary}</p>
               </section>
             )}
 
             {/* Core Skills */}
             {cvData.skills.length > 0 && (
-              <section className="mb-6">
-                <h2 className="text-base md:text-lg font-bold uppercase border-b border-black pb-1 mb-2">Core Skills</h2>
-                <p className="text-sm leading-snug">{cvData.skills.join(", ")}</p>
+              <section className="mb-5">
+                <h2 className="text-[13px] font-bold uppercase border-b border-black pb-0.5 mb-2">Core Skills</h2>
+                <p className="text-[13px] leading-snug">{cvData.skills.join(", ")}</p>
               </section>
             )}
 
             {/* Experience */}
             {cvData.experience.length > 0 && (
-              <section className="mb-6">
-                <h2 className="text-base md:text-lg font-bold uppercase border-b border-black pb-1 mb-3">Professional Experience</h2>
-                <div className="space-y-4">
+              <section className="mb-5">
+                <h2 className="text-[13px] font-bold uppercase border-b border-black pb-0.5 mb-2">Professional Experience</h2>
+                <div className="space-y-3">
                   {cvData.experience.map((exp, index) => (
                     <div key={index}>
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1">
-                        <h3 className="font-bold text-sm md:text-base">{exp.position}</h3>
-                        <span className="text-xs md:text-sm text-gray-600 sm:text-black">{exp.startDate} &ndash; {exp.current ? "Present" : exp.endDate}</span>
+                      <div className="flex justify-between items-baseline">
+                        <h3 className="font-bold text-[13px]">{exp.position}</h3>
+                        <span className="text-[13px]">{exp.startDate} &ndash; {exp.current ? "Present" : exp.endDate}</span>
                       </div>
-                      <p className="text-sm italic mb-1">{exp.company}{exp.location ? `, ${exp.location}` : ''}</p>
-                      <ul className="list-disc list-outside ml-4 text-sm space-y-1">
+                      <p className="text-[13px] italic mb-1">{exp.company}{exp.location ? `, ${exp.location}` : ''}</p>
+                      <ul className="list-disc list-outside ml-5 text-[13px] space-y-0">
                         {exp.description.split('\n').filter(line => line.trim() !== '').map((line, i) => (
                           <li key={i} className="leading-snug">{line.replace(/^[•\-\*]\s*/, '')}</li>
                         ))}
@@ -384,15 +386,15 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
 
             {/* Education */}
             {cvData.education.length > 0 && (
-              <section className="mb-6">
-                <h2 className="text-base md:text-lg font-bold uppercase border-b border-black pb-1 mb-3">Education</h2>
-                <div className="space-y-2">
+              <section className="mb-5">
+                <h2 className="text-[13px] font-bold uppercase border-b border-black pb-0.5 mb-2">Education</h2>
+                <div className="space-y-1">
                   {cvData.education.map((edu, index) => (
-                    <div key={index} className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline">
-                      <p className="text-sm">
-                        <span className="font-bold">{edu.degree} in {edu.field}</span> &mdash; {edu.institution}
+                    <div key={index} className="flex justify-between items-baseline">
+                      <p className="text-[13px]">
+                        <span className="font-bold">{edu.degree}</span> &mdash; {edu.institution}
                       </p>
-                      <span className="text-xs md:text-sm text-gray-600 sm:text-black">{edu.startDate} &ndash; {edu.endDate}</span>
+                      <span className="text-[13px]">{edu.startDate} &ndash; {edu.endDate}</span>
                     </div>
                   ))}
                 </div>
@@ -401,26 +403,23 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
 
             {/* Certifications */}
             {cvData.certifications && cvData.certifications.length > 0 && (
-              <section className="mb-6">
-                <h2 className="text-base md:text-lg font-bold uppercase border-b border-black pb-1 mb-3">Certification</h2>
-                <ul className="list-none text-sm space-y-1">
+              <section className="mb-5">
+                <h2 className="text-[13px] font-bold uppercase border-b border-black pb-0.5 mb-2">Certifications</h2>
+                <ul className="list-disc list-outside ml-5 text-[13px] space-y-0">
                   {cvData.certifications.map((cert, index) => (
-                    <li key={index}>{cert}</li>
+                    <li key={index} className="leading-snug">{cert}</li>
                   ))}
                 </ul>
               </section>
             )}
 
-            {/* Additional Information */}
-            <section className="mb-6">
-              <h2 className="text-base md:text-lg font-bold uppercase border-b border-black pb-1 mb-3">Additional Information</h2>
-              <ul className="list-disc list-inside text-sm space-y-2">
-                {cvData.dateOfBirth && <li>Date of Birth: {cvData.dateOfBirth}</li>}
-                {(cvData.nationality || profile.nationality) && <li>Nationality: {cvData.nationality || profile.nationality}</li>}
-                {cvData.languages && cvData.languages.length > 0 && <li>Languages: {cvData.languages.join(", ")}</li>}
-                {(cvData.visaStatus || profile.visaStatus) && <li>Visa Status: {cvData.visaStatus || profile.visaStatus}</li>}
-              </ul>
-            </section>
+            {/* Languages */}
+            {cvData.languages && cvData.languages.length > 0 && (
+              <section className="mb-5">
+                <h2 className="text-[13px] font-bold uppercase border-b border-black pb-0.5 mb-2">Languages</h2>
+                <p className="text-[13px] leading-snug">{cvData.languages.join(", ")}</p>
+              </section>
+            )}
           </div>
         )}
       </div>
