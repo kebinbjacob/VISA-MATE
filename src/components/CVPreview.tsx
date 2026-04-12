@@ -83,7 +83,7 @@ function Slider({
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CVPreview({ profile, cvData }: CVPreviewProps) {
   const cvRef      = useRef<HTMLDivElement>(null);
-  const [template,    setTemplate]    = useState<"modern" | "ats">("modern");
+  const [template,    setTemplate]    = useState<"ats">("ats");
   const [isExporting, setIsExporting] = useState(false);
   const [showUAEInfo, setShowUAEInfo] = useState(true);
   const [showTypo,    setShowTypo]    = useState(false);
@@ -109,7 +109,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
   // ─── PDF export dispatcher ────────────────────────────────────────────────
   const exportToPDF = () => {
     setIsExporting(true);
-    try { template === "ats" ? exportATS() : exportModern(); }
+    try { exportATS(); }
     finally { setIsExporting(false); }
   };
 
@@ -278,227 +278,6 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
     pdf.save(`${profile.name.replace(/\s+/g, "_")}_CV.pdf`);
   };
 
-  // ─── Modern PDF ───────────────────────────────────────────────────────────
-  const exportModern = () => {
-    const pdf  = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-    const font = typo.fontFamily;
-    const W = 210, H = 297;
-    const LC = 73, RC = W - LC;
-    const LP = 8 + typo.padding,  RP = 10 + typo.padding;
-    const MB  = (typo.marginV + typo.padding) * 0.7;
-    const LTW = LC - LP * 2;
-    const RTW = RC - RP * 2;
-    const WSP = typo.wordSpacing * 3;
-    const GAP = typo.sectionGap;
-    const LHB = mmLH(typo.bodySize);
-    const LHS = mmLH(typo.bodySize - 1);
-
-    const DARK : [number, number, number] = [44,  53,  69 ];
-    const LIGHT: [number, number, number] = [232, 233, 235];
-    const WHITE: [number, number, number] = [255, 255, 255];
-    const GRAY : [number, number, number] = [55,  65,  81 ];
-
-    let lY = 12 + typo.padding, rY = 0;
-    const lX = LP, rX = LC + RP;
-
-    const drawBg = () => {
-      pdf.setFillColor(...LIGHT); pdf.rect(0, 0, LC, H, "F");
-      pdf.setFillColor(...DARK);  pdf.rect(LC, 0, RC, 52 + typo.padding * 1.5, "F");
-    };
-    drawBg();
-
-    const lCheck = (n: number) => {
-      if (lY + n > H - MB) {
-        pdf.addPage(); lY = 12;
-        pdf.setFillColor(...LIGHT); pdf.rect(0, 0, LC, H, "F");
-        pdf.setFillColor(...DARK);  pdf.rect(LC, 0, RC, 8, "F");
-      }
-    };
-    const rCheck = (n: number) => {
-      if (rY + n > H - MB) {
-        pdf.addPage(); rY = 14;
-        pdf.setFillColor(...LIGHT); pdf.rect(0, 0, LC, H, "F");
-        pdf.setFillColor(...DARK);  pdf.rect(LC, 0, RC, 8, "F");
-      }
-    };
-
-    const lHead = (label: string) => {
-      lCheck(12); lY += GAP * 0.6;
-      pdf.setFont(font, "bold"); pdf.setFontSize(typo.sectionSize - 2);
-      pdf.setTextColor(...DARK); pdf.text(label.toUpperCase(), lX, lY);
-      lY += 1.5;
-      pdf.setDrawColor(...DARK); pdf.setLineWidth(0.5);
-      pdf.line(lX, lY, lX + LTW, lY);
-      lY += LHS * 0.9;
-    };
-
-    const lText = (
-      text: string, bold = false,
-      size = typo.bodySize - 1,
-      color: [number, number, number] = GRAY
-    ) => {
-      pdf.setFont(font, bold ? "bold" : "normal");
-      pdf.setFontSize(size); pdf.setTextColor(...color);
-      splitLines(pdf, text, LTW).forEach((line: string) => {
-        lCheck(LHS);
-        if (WSP > 0) pdf.setCharSpace(WSP);
-        pdf.text(line, lX, lY);
-        if (WSP > 0) pdf.setCharSpace(0);
-        lY += LHS;
-      });
-    };
-
-    const rHead = (label: string) => {
-      rCheck(14); rY += GAP * 0.8;
-      pdf.setFillColor(...DARK); pdf.circle(rX + 3.5, rY - 2, 3.5, "F");
-      pdf.setFont(font, "bold"); pdf.setFontSize(typo.sectionSize);
-      pdf.setTextColor(...DARK); pdf.text(label.toUpperCase(), rX + 10, rY);
-      rY += LHB * 1.2;
-    };
-
-    const rDraw = (text: string, x: number, maxW: number, lh: number) => {
-      splitLines(pdf, text, maxW).forEach((line: string) => {
-        rCheck(lh);
-        if (WSP > 0) pdf.setCharSpace(WSP);
-        pdf.text(line, x, rY);
-        if (WSP > 0) pdf.setCharSpace(0);
-        rY += lh;
-      });
-    };
-
-    // ── Left column ──
-    if (profile.photoUrl) {
-      pdf.setFillColor(...WHITE); pdf.circle(LC / 2, lY + 18, 18, "F");
-      lY += 40;
-    }
-
-    lHead("Contact");
-    if (profile.phone)    { lText("Phone",    true, typo.bodySize - 1.5, DARK); lText(profile.phone);    lY += 1; }
-    if (profile.email)    { lText("Email",    true, typo.bodySize - 1.5, DARK); lText(profile.email);    lY += 1; }
-    if (profile.location) { lText("Location", true, typo.bodySize - 1.5, DARK); lText(profile.location); lY += 1; }
-    if (cvData.linkedin)  { lText("LinkedIn", true, typo.bodySize - 1.5, DARK); lText(cvData.linkedin, false, typo.bodySize - 1.5); lY += 1; }
-
-    if (showUAEInfo && (cvData.dateOfBirth || cvData.nationality || profile.nationality ||
-        cvData.visaStatus || profile.visaStatus || cvData.noticePeriod)) {
-      lHead("Info");
-      if (cvData.dateOfBirth) { lText("Date of Birth", true, typo.bodySize - 1.5, DARK); lText(cvData.dateOfBirth); lY += 1; }
-      const nat = cvData.nationality || profile.nationality;
-      if (nat)                { lText("Nationality",   true, typo.bodySize - 1.5, DARK); lText(nat);  lY += 1; }
-      const visa = cvData.visaStatus || profile.visaStatus;
-      if (visa)               { lText("Visa Status",   true, typo.bodySize - 1.5, DARK); lText(visa); lY += 1; }
-      if (cvData.noticePeriod){ lText("Notice Period", true, typo.bodySize - 1.5, DARK); lText(cvData.noticePeriod); lY += 1; }
-    }
-
-    if (cvData.skills.length > 0) {
-      lHead("Skills");
-      cvData.skills.forEach((s) => {
-        lCheck(LHS); pdf.setFont(font, "normal");
-        pdf.setFontSize(typo.bodySize - 1); pdf.setTextColor(...GRAY);
-        pdf.text(`• ${s}`, lX, lY); lY += LHS;
-      });
-    }
-
-    if (cvData.languages.length > 0) {
-      lHead("Languages");
-      cvData.languages.forEach((l) => {
-        lCheck(LHS); pdf.setFont(font, "normal");
-        pdf.setFontSize(typo.bodySize - 1); pdf.setTextColor(...GRAY);
-        pdf.text(`• ${l}`, lX, lY); lY += LHS;
-      });
-    }
-
-    if (cvData.certifications?.length) {
-      lHead("Certifications");
-      pdf.setFont(font, "normal"); pdf.setFontSize(typo.bodySize - 1.5); pdf.setTextColor(...GRAY);
-      cvData.certifications.forEach((c) => {
-        splitLines(pdf, `• ${c}`, LTW).forEach((line: string) => {
-          lCheck(LHS); pdf.text(line, lX, lY); lY += LHS;
-        }); lY += 1;
-      });
-    }
-
-    // ── Right column ──
-    rY = 16 + typo.padding;
-    pdf.setFont(font, "bold"); pdf.setFontSize(typo.nameSize);
-    pdf.setTextColor(...WHITE);
-    pdf.text(profile.name.toUpperCase(), rX, rY);
-    rY += mmLH(typo.nameSize);
-
-    pdf.setFont(font, "normal"); pdf.setFontSize(typo.bodySize + 1);
-    pdf.setTextColor(200, 200, 210);
-    pdf.text((profile.headline || "Professional").toUpperCase(), rX, rY);
-    rY = 56 + typo.padding;
-
-    if (cvData.summary) {
-      rHead("Profile");
-      pdf.setFont(font, "normal"); pdf.setFontSize(typo.bodySize); pdf.setTextColor(...GRAY);
-      rDraw(cvData.summary, rX + 10, RTW - 10, LHB);
-      rY += GAP * 0.5;
-    }
-
-    if (cvData.experience.length > 0) {
-      rHead("Work Experience");
-      cvData.experience.forEach((exp) => {
-        rCheck(20);
-        pdf.setFillColor(...WHITE); pdf.setDrawColor(...DARK); pdf.setLineWidth(0.5);
-        pdf.circle(rX + 1, rY - 1.5, 1.5, "FD");
-        pdf.setDrawColor(180, 180, 185); pdf.setLineWidth(0.3);
-        pdf.line(rX + 1, rY + 1, rX + 1, rY + 20);
-
-        const dateStr = `${exp.startDate} – ${exp.current ? "Present" : exp.endDate}`;
-        pdf.setFont(font, "bold"); pdf.setFontSize(typo.bodySize + 1); pdf.setTextColor(...DARK);
-        pdf.text(exp.company, rX + 5, rY);
-        pdf.setFont(font, "normal"); pdf.setFontSize(typo.bodySize - 1); pdf.setTextColor(...GRAY);
-        pdf.text(dateStr, LC + RC - RP - pdf.getTextWidth(dateStr), rY);
-        rY += LHB * 1.1;
-
-        pdf.setFont(font, "bold"); pdf.setFontSize(typo.bodySize); pdf.setTextColor(...DARK);
-        rDraw(exp.location ? `${exp.position}  |  ${exp.location}` : exp.position, rX + 5, RTW - 5, LHB);
-        rY += 1;
-
-        pdf.setFont(font, "normal"); pdf.setFontSize(typo.bodySize); pdf.setTextColor(...GRAY);
-        exp.description.split("\n").map((l) => l.replace(/^[•\-\*]\s*/, "").trim()).filter(Boolean)
-          .forEach((line) => {
-            rCheck(LHB + 2);
-            splitLines(pdf, line, RTW - 8).forEach((wl: string) => {
-              pdf.text("•", rX + 5, rY);
-              if (WSP > 0) pdf.setCharSpace(WSP);
-              pdf.text(wl, rX + 9, rY);
-              if (WSP > 0) pdf.setCharSpace(0);
-              rY += LHB;
-            });
-          });
-        rY += GAP * 0.8;
-      });
-    }
-
-    if (cvData.education.length > 0) {
-      rHead("Education");
-      cvData.education.forEach((edu) => {
-        rCheck(14);
-        pdf.setFillColor(...WHITE); pdf.setDrawColor(...DARK); pdf.setLineWidth(0.5);
-        pdf.circle(rX + 1, rY - 1.5, 1.5, "FD");
-
-        const dateStr = `${edu.startDate} – ${edu.endDate}`;
-        pdf.setFont(font, "bold"); pdf.setFontSize(typo.bodySize + 1); pdf.setTextColor(...DARK);
-        pdf.text(edu.degree, rX + 5, rY);
-        pdf.setFont(font, "normal"); pdf.setFontSize(typo.bodySize - 1); pdf.setTextColor(...GRAY);
-        pdf.text(dateStr, LC + RC - RP - pdf.getTextWidth(dateStr), rY);
-        rY += LHB * 1.1;
-
-        pdf.setFont(font, "bold"); pdf.setFontSize(typo.bodySize); pdf.setTextColor(...DARK);
-        pdf.text(edu.institution, rX + 5, rY); rY += LHB;
-
-        if (edu.field) {
-          pdf.setFont(font, "normal"); pdf.setFontSize(typo.bodySize); pdf.setTextColor(...GRAY);
-          pdf.text(edu.field, rX + 5, rY); rY += LHB;
-        }
-        rY += GAP * 0.6;
-      });
-    }
-
-    pdf.save(`${profile.name.replace(/\s+/g, "_")}_CV.pdf`);
-  };
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -528,16 +307,10 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
       {/* ── Toolbar ── */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
         <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg w-full sm:w-auto">
-          {(["modern", "ats"] as const).map((t) => (
-            <button key={t} onClick={() => setTemplate(t)}
-              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 sm:flex-none whitespace-nowrap ${
-                template === t ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              {t === "modern" ? <LayoutTemplate className="w-4 h-4" /> : <AlignLeft className="w-4 h-4" />}
-              {t === "modern" ? "Modern" : "ATS Friendly"}
-            </button>
-          ))}
+          <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 sm:flex-none whitespace-nowrap bg-white text-blue-600 shadow-sm">
+            <AlignLeft className="w-4 h-4" />
+            ATS Friendly
+          </div>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap justify-end">
@@ -648,168 +421,8 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
 
       {/* ── CV Preview ── */}
       <div className="bg-white shadow-xl border border-gray-200 rounded-lg flex justify-center cv-preview-container overflow-hidden">
-        {template === "modern" ? (
-          // ── Modern template ──────────────────────────────────────────────
-          <div ref={cvRef}
-            className="flex flex-col md:flex-row bg-white text-gray-800 mx-auto w-full max-w-[210mm]"
-            style={{ minHeight: "297mm", fontFamily: fontCss, fontSize: bodyPx, lineHeight: lineH, wordSpacing: wordSp }}
-          >
-            {/* Left sidebar */}
-            <div data-col="left"
-              className="w-full md:w-[35%] bg-[#E8E9EB] flex flex-col"
-              style={{ padding: `calc(${marginVpx} + ${paddingPx}) calc(${marginHpx} + ${paddingPx})` }}
-            >
-              {profile.photoUrl && (
-                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-white shadow-md mx-auto mb-6 shrink-0">
-                  <img src={profile.photoUrl} alt={profile.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
-                </div>
-              )}
-
-              {/* Contact */}
-              <div className="mb-5">
-                <h2 className="font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-3" style={{ fontSize: sectionPx }}>Contact</h2>
-                <div className="space-y-2 text-gray-700">
-                  {profile.phone    && <div className="flex items-center gap-2"><Phone    className="w-3.5 h-3.5 text-[#2C3545] shrink-0" /><span className="break-all">{profile.phone}</span></div>}
-                  {profile.email    && <div className="flex items-center gap-2"><Mail     className="w-3.5 h-3.5 text-[#2C3545] shrink-0" /><span className="break-all">{profile.email}</span></div>}
-                  {profile.location && <div className="flex items-center gap-2"><MapPin   className="w-3.5 h-3.5 text-[#2C3545] shrink-0" /><span>{profile.location}</span></div>}
-                  {cvData.linkedin  && <div className="flex items-center gap-2"><Linkedin className="w-3.5 h-3.5 text-[#2C3545] shrink-0" /><span className="break-all">{cvData.linkedin}</span></div>}
-                </div>
-              </div>
-
-              {/* UAE Info */}
-              {showUAEInfo && (cvData.dateOfBirth || cvData.nationality || profile.nationality ||
-                cvData.visaStatus || profile.visaStatus || cvData.noticePeriod) && (
-                <div className="mb-5">
-                  <h2 className="font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-3" style={{ fontSize: sectionPx }}>Info</h2>
-                  <div className="space-y-2 text-gray-700">
-                    {cvData.dateOfBirth && <div><span className="font-bold block text-[#2C3545]">Date of Birth</span><span>{cvData.dateOfBirth}</span></div>}
-                    {(cvData.nationality || profile.nationality) && <div><span className="font-bold block text-[#2C3545]">Nationality</span><span>{cvData.nationality || profile.nationality}</span></div>}
-                    {(cvData.visaStatus || profile.visaStatus) && <div><span className="font-bold block text-[#2C3545]">Visa Status</span><span className="capitalize">{cvData.visaStatus || profile.visaStatus}</span></div>}
-                    {cvData.noticePeriod && <div><span className="font-bold block text-[#2C3545]">Notice Period</span><span>{cvData.noticePeriod}</span></div>}
-                  </div>
-                </div>
-              )}
-
-              {/* Skills */}
-              {cvData.skills.length > 0 && (
-                <div className="mb-5">
-                  <h2 className="font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-3" style={{ fontSize: sectionPx }}>Skills</h2>
-                  <ul className="list-disc list-inside text-gray-700 space-y-1">
-                    {cvData.skills.map((s, i) => <li key={i}>{s}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              {/* Languages */}
-              {cvData.languages.length > 0 && (
-                <div className="mb-5">
-                  <h2 className="font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-3" style={{ fontSize: sectionPx }}>Languages</h2>
-                  <ul className="list-disc list-inside text-gray-700 space-y-1">
-                    {cvData.languages.map((l, i) => <li key={i}>{l}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              {/* Certifications */}
-              {cvData.certifications?.length && (
-                <div className="mb-5">
-                  <h2 className="font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-3" style={{ fontSize: sectionPx }}>Certifications</h2>
-                  <ul className="list-disc list-inside text-gray-700 space-y-1">
-                    {cvData.certifications.map((c, i) => <li key={i} className="leading-snug">{c}</li>)}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Right column */}
-            <div data-col="right" className="w-full md:w-[65%] flex flex-col bg-white">
-              {/* Dark header band */}
-              <div className="bg-[#2C3545] text-white flex flex-col justify-center min-h-[160px] md:min-h-[200px]"
-                style={{ padding: `calc(${marginVpx} + ${paddingPx}) calc(${marginHpx} + ${paddingPx})` }}>
-                <h1 className="font-bold tracking-widest uppercase mb-2 break-words" style={{ fontSize: namePx, fontFamily: fontCss }}>
-                  {profile.name}
-                </h1>
-                <h2 className="tracking-widest uppercase text-gray-300" style={{ fontSize: bodyPx, fontFamily: fontCss }}>
-                  {profile.headline || "Professional"}
-                </h2>
-              </div>
-
-              {/* Sections */}
-              <div className="flex-1 space-y-6" style={{ padding: `calc(${marginVpx} + ${paddingPx}) calc(${marginHpx} + ${paddingPx})` }}>
-
-                {cvData.summary && (
-                  <section>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-[#2C3545] text-white flex items-center justify-center shrink-0"><User className="w-4 h-4" /></div>
-                      <h3 className="font-bold tracking-widest text-[#2C3545] uppercase" style={{ fontSize: sectionPx }}>Profile</h3>
-                    </div>
-                    <div className="pl-11">
-                      <p className="text-gray-700 whitespace-pre-wrap" style={{ fontSize: bodyPx, lineHeight: lineH, wordSpacing: wordSp }}>{cvData.summary}</p>
-                    </div>
-                  </section>
-                )}
-
-                {cvData.experience.length > 0 && (
-                  <section>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-[#2C3545] text-white flex items-center justify-center shrink-0"><Briefcase className="w-4 h-4" /></div>
-                      <h3 className="font-bold tracking-widest text-[#2C3545] uppercase" style={{ fontSize: sectionPx }}>Work Experience</h3>
-                    </div>
-                    <div className="pl-4">
-                      <div className="border-l border-gray-300 pl-7 space-y-5 py-1">
-                        {cvData.experience.map((exp, i) => (
-                          <div key={i} className="relative">
-                            <div className="absolute -left-[30px] top-1.5 w-3 h-3 bg-white border-2 border-[#2C3545] rounded-full" />
-                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1 gap-1">
-                              <h4 className="font-bold text-gray-900" style={{ fontSize: bodyPx }}>{exp.company}</h4>
-                              <span className="text-gray-600 font-medium" style={{ fontSize: `calc(${bodyPx} - 1px)` }}>
-                                {exp.startDate} – {exp.current ? "Present" : exp.endDate}
-                              </span>
-                            </div>
-                            <p className="font-bold text-[#2C3545] mb-1" style={{ fontSize: bodyPx }}>
-                              {exp.position}{exp.location ? ` | ${exp.location}` : ""}
-                            </p>
-                            <div className="text-gray-700 whitespace-pre-wrap" style={{ fontSize: bodyPx, lineHeight: lineH, wordSpacing: wordSp }}>
-                              {exp.description}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-                )}
-
-                {cvData.education.length > 0 && (
-                  <section>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-[#2C3545] text-white flex items-center justify-center shrink-0"><GraduationCap className="w-4 h-4" /></div>
-                      <h3 className="font-bold tracking-widest text-[#2C3545] uppercase" style={{ fontSize: sectionPx }}>Education</h3>
-                    </div>
-                    <div className="pl-4">
-                      <div className="border-l border-gray-300 pl-7 space-y-5 py-1">
-                        {cvData.education.map((edu, i) => (
-                          <div key={i} className="relative">
-                            <div className="absolute -left-[30px] top-1.5 w-3 h-3 bg-white border-2 border-[#2C3545] rounded-full" />
-                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1 gap-1">
-                              <h4 className="font-bold text-gray-900" style={{ fontSize: bodyPx }}>{edu.degree}</h4>
-                              <span className="text-gray-600 font-medium" style={{ fontSize: `calc(${bodyPx} - 1px)` }}>
-                                {edu.startDate} – {edu.endDate}
-                              </span>
-                            </div>
-                            <p className="font-bold text-[#2C3545] mb-0.5" style={{ fontSize: bodyPx }}>{edu.institution}</p>
-                            <p className="text-gray-700" style={{ fontSize: bodyPx }}>{edu.field}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          // ── ATS template ─────────────────────────────────────────────────
-          <div ref={cvRef}
+        {/* ── ATS template ───────────────────────────────────────────────── */}
+        <div ref={cvRef}
             className="bg-white text-black mx-auto w-full max-w-[210mm]"
             style={{ minHeight: "297mm", padding: `calc(${marginVpx} + ${paddingPx}) calc(${marginHpx} + ${paddingPx})`, fontFamily: fontCss, fontSize: bodyPx, lineHeight: lineH, wordSpacing: wordSp }}
           >
@@ -901,7 +514,6 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
               </section>
             )}
           </div>
-        )}
       </div>
     </div>
   );
