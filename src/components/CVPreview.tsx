@@ -13,6 +13,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
   const cvRef = useRef<HTMLDivElement>(null);
   const [template, setTemplate] = useState<"modern" | "ats">("modern");
   const [isExporting, setIsExporting] = useState(false);
+  const [showUAEInfo, setShowUAEInfo] = useState(true);
 
   const exportToPDF = async () => {
     if (!cvRef.current) return;
@@ -32,29 +33,23 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
       });
       
       const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
       
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
       
-      const ratio = pdfWidth / imgWidth;
-      const scaledHeight = imgHeight * ratio;
-
-      let heightLeft = scaledHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - scaledHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-        heightLeft -= pdfHeight;
-      }
-
+      // Calculate PDF dimensions to fit everything on one page
+      // We use A4 width (210mm) as the base and calculate height proportionally
+      const pdfWidth = 210;
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+      
+      // Create PDF with custom size [width, height] in mm
+      const pdf = new jsPDF({
+        orientation: "p",
+        unit: "mm",
+        format: [pdfWidth, pdfHeight]
+      });
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${profile.name.replace(/\s+/g, "_")}_CV.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -120,13 +115,24 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
             <AlignLeft className="w-4 h-4" /> ATS Friendly
           </button>
         </div>
-        <button
-          onClick={exportToPDF}
-          disabled={isExporting}
-          className="flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm w-full sm:w-auto disabled:opacity-70"
-        >
-          <Download className="w-4 h-4" /> {isExporting ? "Exporting..." : "Export PDF"}
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
+            <input 
+              type="checkbox" 
+              checked={showUAEInfo} 
+              onChange={(e) => setShowUAEInfo(e.target.checked)}
+              className="rounded text-blue-600 focus:ring-blue-500"
+            />
+            Include UAE Info
+          </label>
+          <button
+            onClick={exportToPDF}
+            disabled={isExporting}
+            className="flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm flex-1 sm:flex-none disabled:opacity-70"
+          >
+            <Download className="w-4 h-4" /> {isExporting ? "Exporting..." : "Export PDF"}
+          </button>
+        </div>
       </div>
 
       <div className={`bg-white shadow-xl border border-gray-200 rounded-lg flex justify-center cv-preview-container ${isExporting ? 'overflow-visible' : 'overflow-hidden'}`}>
@@ -177,35 +183,37 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
               </div>
 
               {/* Personal Info (UAE) */}
-              <div className="mb-6 md:mb-8">
-                <h2 className="text-base md:text-lg font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-3 md:mb-4">Info</h2>
-                <div className="space-y-3 text-sm text-gray-700">
-                  {cvData.dateOfBirth && (
-                    <div>
-                      <span className="font-bold block text-[#2C3545]">Date of Birth</span>
-                      <span>{cvData.dateOfBirth}</span>
-                    </div>
-                  )}
-                  {(cvData.nationality || profile.nationality) && (
-                    <div>
-                      <span className="font-bold block text-[#2C3545]">Nationality</span>
-                      <span>{cvData.nationality || profile.nationality}</span>
-                    </div>
-                  )}
-                  {(cvData.visaStatus || profile.visaStatus) && (
-                    <div>
-                      <span className="font-bold block text-[#2C3545]">Visa Status</span>
-                      <span className="capitalize">{cvData.visaStatus || profile.visaStatus}</span>
-                    </div>
-                  )}
-                  {cvData.noticePeriod && (
-                    <div>
-                      <span className="font-bold block text-[#2C3545]">Notice Period</span>
-                      <span>{cvData.noticePeriod}</span>
-                    </div>
-                  )}
+              {showUAEInfo && (cvData.dateOfBirth || cvData.nationality || profile.nationality || cvData.visaStatus || profile.visaStatus || cvData.noticePeriod) && (
+                <div className="mb-6 md:mb-8">
+                  <h2 className="text-base md:text-lg font-bold tracking-widest text-[#2C3545] uppercase border-b-2 border-[#2C3545] pb-1 mb-3 md:mb-4">Info</h2>
+                  <div className="space-y-3 text-sm text-gray-700">
+                    {cvData.dateOfBirth && (
+                      <div>
+                        <span className="font-bold block text-[#2C3545]">Date of Birth</span>
+                        <span>{cvData.dateOfBirth}</span>
+                      </div>
+                    )}
+                    {(cvData.nationality || profile.nationality) && (
+                      <div>
+                        <span className="font-bold block text-[#2C3545]">Nationality</span>
+                        <span>{cvData.nationality || profile.nationality}</span>
+                      </div>
+                    )}
+                    {(cvData.visaStatus || profile.visaStatus) && (
+                      <div>
+                        <span className="font-bold block text-[#2C3545]">Visa Status</span>
+                        <span className="capitalize">{cvData.visaStatus || profile.visaStatus}</span>
+                      </div>
+                    )}
+                    {cvData.noticePeriod && (
+                      <div>
+                        <span className="font-bold block text-[#2C3545]">Notice Period</span>
+                        <span>{cvData.noticePeriod}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Skills */}
               {cvData.skills.length > 0 && (
@@ -418,6 +426,19 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
               <section className="mb-5">
                 <h2 className="text-[13px] font-bold uppercase border-b border-black pb-0.5 mb-2">Languages</h2>
                 <p className="text-[13px] leading-snug">{cvData.languages.join(", ")}</p>
+              </section>
+            )}
+
+            {/* Additional Information (UAE) */}
+            {showUAEInfo && (cvData.dateOfBirth || cvData.nationality || profile.nationality || cvData.visaStatus || profile.visaStatus || cvData.noticePeriod) && (
+              <section className="mb-5">
+                <h2 className="text-[13px] font-bold uppercase border-b border-black pb-0.5 mb-2">Additional Information</h2>
+                <ul className="list-disc list-inside text-[13px] space-y-1">
+                  {cvData.dateOfBirth && <li><span className="font-bold">Date of Birth:</span> {cvData.dateOfBirth}</li>}
+                  {(cvData.nationality || profile.nationality) && <li><span className="font-bold">Nationality:</span> {cvData.nationality || profile.nationality}</li>}
+                  {(cvData.visaStatus || profile.visaStatus) && <li><span className="font-bold">Visa Status:</span> <span className="capitalize">{cvData.visaStatus || profile.visaStatus}</span></li>}
+                  {cvData.noticePeriod && <li><span className="font-bold">Notice Period:</span> {cvData.noticePeriod}</li>}
+                </ul>
               </section>
             )}
           </div>
