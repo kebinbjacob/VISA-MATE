@@ -420,10 +420,11 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
       )}
 
       {/* ── CV Preview ── */}
-      <div className="bg-white shadow-xl border border-gray-200 rounded-lg flex justify-center cv-preview-container overflow-hidden">
-        {/* ── ATS template ───────────────────────────────────────────────── */}
-        <div ref={cvRef}
-            className="bg-white text-black mx-auto w-full max-w-[210mm]"
+      <div className="bg-white shadow-xl border border-gray-200 rounded-lg cv-preview-container overflow-x-auto">
+        <div className="min-w-max p-4 sm:p-8 flex justify-center">
+          {/* ── ATS template ───────────────────────────────────────────────── */}
+          <div ref={cvRef}
+              className="bg-white text-black w-[210mm] shrink-0 shadow-sm border border-gray-100"
             style={{ minHeight: "297mm", padding: `calc(${marginVpx} + ${paddingPx}) calc(${marginHpx} + ${paddingPx})`, fontFamily: fontCss, fontSize: bodyPx, lineHeight: lineH, wordSpacing: wordSp }}
           >
             <header className="text-center mb-4">
@@ -514,6 +515,7 @@ export default function CVPreview({ profile, cvData }: CVPreviewProps) {
               </section>
             )}
           </div>
+        </div>
       </div>
     </div>
   );
