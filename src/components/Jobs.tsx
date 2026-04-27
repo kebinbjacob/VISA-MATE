@@ -400,7 +400,7 @@ export default function Jobs() {
               </div>
             ) : (
               displayedJobs.map(job => (
-                <div key={job.id} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow group flex flex-col gap-4">
+                <div key={job.id} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group flex flex-col gap-4">
                   <div className="flex items-start gap-4">
                     {/* Logo Placeholder */}
                     <div className="w-14 h-14 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 flex items-center justify-center shrink-0 text-blue-700">
@@ -487,17 +487,23 @@ export default function Jobs() {
                     </div>
                     
                     <div className="flex items-center gap-3">
-                      <button 
-                        onClick={() => toggleSave(job)}
-                        className={`p-2.5 border rounded-xl transition-colors flex items-center justify-center ${
-                          savedJobs.has(job.id) 
-                            ? 'bg-blue-50 border-blue-200 text-blue-700' 
-                            : 'border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50'
-                        }`}
-                        title={savedJobs.has(job.id) ? 'Saved' : 'Save Job'}
-                      >
-                        <Bookmark className={`w-5 h-5 ${savedJobs.has(job.id) ? 'fill-blue-700' : ''}`} />
-                      </button>
+                      <div className="relative group/save">
+                        <button 
+                          onClick={() => toggleSave(job)}
+                          className={`p-2.5 border rounded-xl transition-colors flex items-center justify-center ${
+                            savedJobs.has(job.id) 
+                              ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                              : 'border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50'
+                          }`}
+                          aria-label={savedJobs.has(job.id) ? 'Saved' : 'Save Job'}
+                        >
+                          <Bookmark className={`w-5 h-5 ${savedJobs.has(job.id) ? 'fill-blue-700' : ''}`} />
+                        </button>
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-gray-900 text-white text-xs font-semibold rounded-lg opacity-0 invisible group-hover/save:opacity-100 group-hover/save:visible transition-all whitespace-nowrap z-10 shadow-sm">
+                          {savedJobs.has(job.id) ? 'Saved !' : 'Save Job'}
+                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                        </div>
+                      </div>
                       {job.contactEmail && (
                         <a 
                           href={`mailto:${job.contactEmail}?subject=Application for ${job.title}`}
